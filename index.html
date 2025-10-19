@@ -12,34 +12,56 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
         }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
+        .dashboard-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+        }
+        .kpi-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+        .kpi-card.youtube {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .kpi-card.rag {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .data-card {
+            background: white;
+            border-radius: 15px;
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
         }
         .tab-button {
             transition: all 0.3s ease;
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            border-radius: 9999px; /* rounded-full */
+            color: #4B5563; /* text-gray-600 */
         }
         .tab-button.active {
-            background-color: #3B82F6;
-            color: white;
+            background-color: white;
+            color: #3B82F6; /* text-blue-600 */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
         .tab-content {
             display: none;
         }
         .tab-content.active {
             display: block;
-        }
-        .kpi-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .kpi-card.youtube {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        }
-        .rag-query-container {
-            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
         }
         .loading-spinner {
             border: 4px solid #f3f3f3;
@@ -53,9 +75,23 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .status-online {
+            width: 10px;
+            height: 10px;
+            background: #10B981;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
         .data-freshness {
-            font-size: 0.75rem;
-            color: #6B7280;
+            font-size: 0.875rem;
+            color: #4B5563;
         }
         .keyword-cloud {
             display: flex;
@@ -66,24 +102,31 @@
             overflow-y: auto;
         }
         .keyword-tag {
-            background-color: #E5E7EB;
+            background: #E5E7EB;
             color: #374151;
-            padding: 4px 8px;
-            border-radius: 12px;
+            padding: 8px 16px;
+            border-radius: 20px;
             font-size: 0.875rem;
             font-weight: 500;
+            margin: 4px;
+            display: inline-block;
+            transition: all 0.3s ease;
         }
-        .keyword-tag.high-frequency {
-            background-color: #FEF3C7;
-            color: #92400E;
+        .keyword-tag:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
-        .keyword-tag.medium-frequency {
-            background-color: #DBEAFE;
-            color: #1E40AF;
+        .keyword-tag.positive {
+            background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+            color: #065F46;
         }
-        .keyword-tag.mixed-response {
-            background-color: #FEF3C7;
-            color: #92400E;
+        .keyword-tag.negative {
+            background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+            color: #991B1B;
+        }
+        .keyword-tag.neutral {
+            background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%);
+            color: #3730A3;
         }
         .chart-container {
             position: relative;
@@ -131,99 +174,90 @@
                 font-size: 0.8rem;
                 padding: 0.4rem 0.6rem;
             }
+            .tab-button {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto p-8" id="dashboard-content">
-        <!-- Header -->
-        <div class="bg-white p-8 rounded-lg shadow-md mb-8">
-            <h1 class="text-4xl font-bold text-center mb-4 text-gray-800">VoterIQ Integrated Trend Analysis</h1>
-            <p class="text-center text-gray-600">Comprehensive dashboard showing poll sentiment, YouTube analysis, and AI-powered RAG system.</p>
-            <div class="flex justify-center items-center mt-4 space-x-4">
-                <span class="data-freshness" id="data-freshness">Last updated: Loading...</span>
-                <button onclick="refreshData()" class="bg-blue-500 text-white px-4 py-2 rounded-md shadow hover:bg-blue-600 text-sm">
+<body class="min-h-screen p-4 md:p-8">
+    <div class="dashboard-container max-w-7xl mx-auto p-6 md:p-8" id="dashboard-content">
+        <div class="text-center mb-8">
+            <h1 class="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                VoterIQ Integrated Trend Analysis
+            </h1>
+            <p class="text-xl text-gray-600 mb-6">
+                Comprehensive dashboard showing poll sentiment, YouTube analysis, and AI-powered RAG system.
+            </p>
+            <div class="flex justify-center items-center flex-wrap gap-4">
+                <div class="flex items-center data-freshness">
+                    <span class="status-online"></span>
+                    <span id="data-freshness">Last updated: Loading...</span>
+                </div>
+                <button onclick="refreshData(event)" class="bg-blue-500 text-white px-6 py-2 rounded-full shadow hover:bg-blue-600 text-sm font-medium transition-colors">
                     Refresh Data
                 </button>
-            </div>
-        </div>
-
-        <!-- Navigation Tabs -->
-        <div class="bg-white rounded-lg shadow-md mb-8">
-            <div class="flex border-b">
-                <button class="tab-button active px-6 py-4 text-lg font-medium" onclick="switchTab('polls', event)">
-                    Poll Analysis
-                </button>
-                <button class="tab-button px-6 py-4 text-lg font-medium" onclick="switchTab('youtube', event)">
-                    YouTube Analysis
-                </button>
-                <button class="tab-button px-6 py-4 text-lg font-medium" onclick="switchTab('rag-insights', event)">
-                    RAG Insights
+                <button onclick="exportToPDF()" class="bg-indigo-500 text-white px-6 py-2 rounded-full shadow hover:bg-indigo-600 text-sm font-medium transition-colors">
+                    Export Integrated Report to PDF
                 </button>
             </div>
         </div>
 
-        <!-- Export Button -->
-        <div class="flex justify-end mb-4">
-            <button onclick="exportToPDF()" class="bg-indigo-500 text-white px-6 py-3 rounded-md shadow hover:bg-indigo-600">
-                Export Integrated Report to PDF
+        <div class="flex justify-center mb-8 bg-gray-100 rounded-full shadow-inner p-1">
+            <button class="tab-button active" onclick="switchTab('polls', event)">
+                Poll Analysis
+            </button>
+            <button class="tab-button" onclick="switchTab('youtube', event)">
+                VoterIQ
+            </button>
+            <button class="tab-button" onclick="switchTab('rag-insights', event)">
+                ASK VoterIQ
             </button>
         </div>
 
-        <!-- Poll Analysis Tab -->
         <div id="polls-tab" class="tab-content active">
-            <!-- Poll KPI Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="kpi-card p-6 rounded-lg shadow-md flex items-center justify-between">
-                    <div>
-                        <h3 class="text-xl font-semibold">Overall TDP Support</h3>
-                        <p id="tdp-support" class="text-4xl font-bold mt-2">--</p>
-                    </div>
+                <div class="kpi-card p-6 text-center">
+                    <h3 class="text-xl font-semibold">Overall TDP Support</h3>
+                    <p id="tdp-support" class="text-4xl font-bold mt-2">--</p>
                 </div>
-                <div class="kpi-card p-6 rounded-lg shadow-md flex items-center justify-between">
-                    <div>
-                        <h3 class="text-xl font-semibold">Overall YSRCP Support</h3>
-                        <p id="ysrcp-support" class="text-4xl font-bold mt-2">--</p>
-                    </div>
+                <div class="kpi-card p-6 text-center">
+                    <h3 class="text-xl font-semibold">Overall YSRCP Support</h3>
+                    <p id="ysrcp-support" class="text-4xl font-bold mt-2">--</p>
                 </div>
-                <div class="kpi-card p-6 rounded-lg shadow-md flex items-center justify-between">
-                    <div>
-                        <h3 class="text-xl font-semibold">Swing Voter %</h3>
-                        <p id="swing-voter" class="text-4xl font-bold mt-2">--</p>
-                    </div>
+                <div class="kpi-card p-6 text-center">
+                    <h3 class="text-xl font-semibold">Swing Voter %</h3>
+                    <p id="swing-voter" class="text-4xl font-bold mt-2">--</p>
                 </div>
             </div>
 
-            <!-- Poll Charts -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="data-card">
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">Key Voter Issues</h2>
-                    <div id="poll-issues" class="flex flex-wrap gap-2">
-                        <!-- Poll issues will be loaded here -->
-                    </div>
+                    <div id="poll-issues" class="keyword-cloud">
+                        </div>
                 </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="data-card">
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">Support Distribution by Issue</h2>
-                    <canvas id="pollIssueChart"></canvas>
+                    <div class="chart-container">
+                        <canvas id="pollIssueChart"></canvas>
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="data-card">
                     <h2 class="text-2xl font-bold text-gray-800 mb-4">Swing Voter Issues</h2>
-                    <div id="swing-issues" class="flex flex-wrap gap-2">
-                        <!-- Swing voter issues will be loaded here -->
+                    <div id="swing-issues" class="keyword-cloud">
+                        </div>
+                </div>
+                <div class="data-card">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Voter Leaning Breakdown</h2>
+                    <div class="chart-container flex justify-center items-center" style="height: 300px;">
+                        <canvas id="voterLeaningChart" style="max-height: 300px;"></canvas>
                     </div>
                 </div>
             </div>
 
-            <!-- Voter Demographics -->
-            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">Voter Leaning Breakdown</h2>
-                <div class="flex justify-center items-center max-w-lg mx-auto">
-                    <canvas id="voterLeaningChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Integrated Analysis Overview -->
-            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <div class="data-card">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">Integrated Analysis Overview</h2>
                 <div id="integrated-summary" class="text-gray-700 leading-relaxed">
                     <p>Loading integrated analysis summary...</p>
@@ -231,251 +265,294 @@
             </div>
         </div>
 
-        <!-- YouTube Analysis Tab -->
         <div id="youtube-tab" class="tab-content">
-            <!-- YouTube Loading State -->
-            <div id="youtube-loading" class="hidden flex items-center justify-center p-8">
+            <div id="youtube-loading" class="hidden flex items-center justify-center p-8 data-card">
                 <div class="text-center">
                     <div class="loading-spinner mx-auto mb-4"></div>
-                    <p class="text-gray-600">Loading YouTube analysis data...</p>
+                    <p class="text-gray-600">Loading VoterIQ analysis data...</p>
                 </div>
             </div>
             
-            <!-- YouTube Error State -->
-            <div id="youtube-error" class="hidden p-8 text-center">
+            <div id="youtube-error" class="hidden p-8 text-center data-card">
                 <div class="bg-red-50 border border-red-200 rounded-lg p-6">
                     <h3 class="text-lg font-semibold text-red-800 mb-2">Error Loading YouTube Data</h3>
-                    <p class="text-red-600 mb-4" id="youtube-error-message">Failed to load YouTube analysis data.</p>
+                    <p class="text-red-600 mb-4" id="youtube-error-message">Failed to load VoterIQ analysis data.</p>
                     <button onclick="loadYouTubeData()" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
                         Retry
                     </button>
                 </div>
             </div>
             
-            <!-- YouTube Content -->
             <div id="youtube-content">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="kpi-card youtube p-6 text-center">
+                        <h3 class="text-lg font-semibold mb-2">Total Videos Analyzed</h3>
+                        <div class="text-4xl font-bold" id="youtube-total-videos">--</div>
+                    </div>
+                    <div class="kpi-card youtube p-6 text-center">
+                        <h3 class="text-lg font-semibold mb-2">Total Comments Analyzed</h3>
+                        <div class="text-4xl font-bold" id="youtube-total-comments">--</div>
+                    </div>
+                    <div class="kpi-card youtube p-6 text-center">
+                        <h3 class="text-lg font-semibold mb-2">Overall Sentiment Score</h3>
+                        <div class="text-4xl font-bold" id="youtube-sentiment-score">--</div>
+                    </div>
+                </div>
 
-            <!-- YouTube KPI Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-blue-600 mb-2" id="youtube-total-videos">--</div>
-                        <div class="text-sm text-gray-600">Total Videos Analyzed</div>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-green-600 mb-2" id="youtube-total-comments">--</div>
-                        <div class="text-sm text-gray-600">Total Comments Analyzed</div>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="text-center">
-                        <div class="text-3xl font-bold text-purple-600 mb-2" id="youtube-sentiment-score">--</div>
-                        <div class="text-sm text-gray-600">Overall Sentiment Score</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- YouTube Keyword Analysis -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="section-header">
-                        <h2 class="text-2xl font-bold text-gray-800">Top Positive Keywords</h2>
-                        <select id="positive-keywords-limit" class="display-limit-selector" onchange="renderPositiveKeywords()">
-                            <option value="10" selected>Top 10</option>
-                            <option value="all">Show All</option>
-                        </select>
-                    </div>
-                    <div id="youtube-positive-keywords" class="keyword-cloud">
-                        <!-- Positive keywords will be loaded here -->
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="section-header">
-                        <h2 class="text-2xl font-bold text-gray-800">Top Negative Keywords</h2>
-                        <select id="negative-keywords-limit" class="display-limit-selector" onchange="renderNegativeKeywords()">
-                            <option value="10" selected>Top 10</option>
-                            <option value="all">Show All</option>
-                        </select>
-                    </div>
-                    <div id="youtube-negative-keywords" class="keyword-cloud">
-                        <!-- Negative keywords will be loaded here -->
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="section-header">
-                        <h2 class="text-2xl font-bold text-gray-800">Mixed Response Keywords</h2>
-                        <select id="mixed-keywords-limit" class="display-limit-selector" onchange="renderMixedKeywords()">
-                            <option value="10" selected>Top 10</option>
-                            <option value="all">Show All</option>
-                        </select>
-                    </div>
-                    <div id="youtube-mixed-keywords" class="keyword-cloud">
-                        <!-- Mixed response keywords will be loaded here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Political Issues Analysis -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="section-header">
-                        <h2 class="text-2xl font-bold text-gray-800">Positive Political Issues</h2>
-                        <select id="positive-issues-limit" class="display-limit-selector" onchange="renderPositiveIssues()">
-                            <option value="10" selected>Top 10</option>
-                            <option value="all">Show All</option>
-                        </select>
-                    </div>
-                    <div id="youtube-positive-issues" class="keyword-cloud">
-                        <!-- Positive political issues will be loaded here -->
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="section-header">
-                        <h2 class="text-2xl font-bold text-gray-800">Critical Issues</h2>
-                        <select id="negative-issues-limit" class="display-limit-selector" onchange="renderNegativeIssues()">
-                            <option value="10" selected>Top 10</option>
-                            <option value="all">Show All</option>
-                        </select>
-                    </div>
-                    <div id="youtube-negative-issues" class="keyword-cloud">
-                        <!-- Critical political issues will be loaded here -->
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="section-header">
-                        <h2 class="text-2xl font-bold text-gray-800">Mixed Sentiment Issues</h2>
-                        <select id="mixed-issues-limit" class="display-limit-selector" onchange="renderMixedIssues()">
-                            <option value="10" selected>Top 10</option>
-                            <option value="all">Show All</option>
-                        </select>
-                    </div>
-                    <div id="youtube-mixed-issues" class="keyword-cloud">
-                        <!-- Mixed sentiment political issues will be loaded here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top 5 Political Issues Charts -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Top 5 Most Positive Issues</h2>
-                    <div class="chart-container" style="position: relative; height: 300px;">
-                        <canvas id="topPositiveIssuesChart"></canvas>
-                        <div class="chart-message hidden"></div>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Top 5 Most Negative Issues</h2>
-                    <div class="chart-container" style="position: relative; height: 300px;">
-                        <canvas id="topNegativeIssuesChart"></canvas>
-                        <div class="chart-message hidden"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- YouTube Sentiment Distribution -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Sentiment Distribution</h2>
-                    <div class="chart-container" style="position: relative; height: 300px;">
-                        <canvas id="youtubeSentimentChart"></canvas>
-                    </div>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-xl font-bold text-gray-800 mb-4">Analysis Metrics</h2>
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Total Comments Analyzed:</span>
-                            <span id="youtube-chart-total-comments" class="font-semibold">--</span>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="data-card">
+                        <div class="section-header">
+                            <h2 class="text-2xl font-bold text-gray-800">Top Positive Keywords</h2>
+                            <select id="positive-keywords-limit" class="display-limit-selector" onchange="renderPositiveKeywords()">
+                                <option value="10" selected>Top 10</option>
+                                <option value="all">Show All</option>
+                            </select>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Most Common Sentiment:</span>
-                            <span id="youtube-chart-dominant-sentiment" class="font-semibold">--</span>
+                        <div id="youtube-positive-keywords" class="keyword-cloud">
+                            </div>
+                    </div>
+                    <div class="data-card">
+                        <div class="section-header">
+                            <h2 class="text-2xl font-bold text-gray-800">Top Negative Keywords</h2>
+                            <select id="negative-keywords-limit" class="display-limit-selector" onchange="renderNegativeKeywords()">
+                                <option value="10" selected>Top 10</option>
+                                <option value="all">Show All</option>
+                            </select>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">Sentiment Confidence:</span>
-                            <span id="youtube-chart-confidence" class="font-semibold">--</span>
+                        <div id="youtube-negative-keywords" class="keyword-cloud">
+                            </div>
+                    </div>
+                    <div class="data-card">
+                        <div class="section-header">
+                            <h2 class="text-2xl font-bold text-gray-800">Mixed Response Keywords</h2>
+                            <select id="mixed-keywords-limit" class="display-limit-selector" onchange="renderMixedKeywords()">
+                                <option value="10" selected>Top 10</option>
+                                <option value="all">Show All</option>
+                            </select>
+                        </div>
+                        <div id="youtube-mixed-keywords" class="keyword-cloud">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="data-card">
+                        <div class="section-header">
+                            <h2 class="text-2xl font-bold text-gray-800">Positive Political Issues</h2>
+                            <select id="positive-issues-limit" class="display-limit-selector" onchange="renderPositiveIssues()">
+                                <option value="10" selected>Top 10</option>
+                                <option value="all">Show All</option>
+                            </select>
+                        </div>
+                        <div id="youtube-positive-issues" class="keyword-cloud">
+                            </div>
+                    </div>
+                    <div class="data-card">
+                        <div class="section-header">
+                            <h2 class="text-2xl font-bold text-gray-800">Critical Issues</h2>
+                            <select id="negative-issues-limit" class="display-limit-selector" onchange="renderNegativeIssues()">
+                                <option value="10" selected>Top 10</option>
+                                <option value="all">Show All</option>
+                            </select>
+                        </div>
+                        <div id="youtube-negative-issues" class="keyword-cloud">
+                            </div>
+                    </div>
+                    <div class="data-card">
+                        <div class="section-header">
+                            <h2 class="text-2xl font-bold text-gray-800">Mixed Sentiment Issues</h2>
+                            <select id="mixed-issues-limit" class="display-limit-selector" onchange="renderMixedIssues()">
+                                <option value="10" selected>Top 10</option>
+                                <option value="all">Show All</option>
+                            </select>
+                        </div>
+                        <div id="youtube-mixed-issues" class="keyword-cloud">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="data-card">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Top 5 Most Positive Issues</h2>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <canvas id="topPositiveIssuesChart"></canvas>
+                            <div class="chart-message hidden"></div>
+                        </div>
+                    </div>
+                    <div class="data-card">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Top 5 Most Negative Issues</h2>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <canvas id="topNegativeIssuesChart"></canvas>
+                            <div class="chart-message hidden"></div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- YouTube Analysis Writeup -->
-            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">YouTube Analysis Summary</h2>
-                <div id="youtube-narrative" class="text-gray-700 leading-relaxed">
-                    <p>Loading YouTube analysis summary...</p>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="data-card">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold text-gray-800">Sentiment Distribution</h2>
+                            <select id="sentiment-category-filter" class="display-limit-selector" onchange="renderYouTubeCharts()">
+                                <option value="all">All Categories</option>
+                                <option value="Infrastructure Development">Infrastructure Development</option>
+                                <option value="Agricultural Support">Agricultural Support</option>
+                                <option value="Social Welfare Schemes">Social Welfare Schemes</option>
+                                <option value="Political Governance">Political Governance</option>
+                                <option value="Economic Development">Economic Development</option>
+                                <option value="Education & Healthcare">Education & Healthcare</option>
+                                <option value="Corruption & Transparency">Corruption & Transparency</option>
+                            </select>
+                        </div>
+                        <div class="chart-container" style="position: relative; height: 300px;">
+                            <canvas id="youtubeSentimentChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="data-card">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Analysis Metrics</h2>
+                        <div class="space-y-6 pt-4">
+                            <div class="text-center">
+                                <div class="metric-label text-gray-600">Total Comments Analyzed</div>
+                                <div id="youtube-chart-total-comments" class="text-3xl font-bold text-gray-800">--</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="metric-label text-gray-600">Most Common Sentiment</div>
+                                <div id="youtube-chart-dominant-sentiment" class="text-3xl font-bold text-gray-800">--</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="metric-label text-gray-600">Sentiment Confidence</div>
+                                <div id="youtube-chart-confidence" class="text-3xl font-bold text-gray-800">--</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Political Issues Analysis Writeup -->
-            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4">Political Issues Analysis</h2>
-                <div id="youtube-political-issues-narrative" class="text-gray-700 leading-relaxed">
-                    <p>Loading political issues analysis...</p>
+                <div class="data-card">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Issue Priority Matrix</h2>
+                    <p class="text-sm text-gray-600 mb-4">Issues plotted by Impact (video count + occurrences) vs Urgency (confidence + sentiment intensity). Bubble size represents occurrence count.</p>
+                    <div class="chart-container" style="position: relative; height: 500px;">
+                        <canvas id="issuePriorityMatrix"></canvas>
+                    </div>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-2 text-sm">
+                        <div class="p-2 bg-red-100 border border-red-300 rounded">
+                            <strong>🔴 Critical:</strong> High impact, high urgency - Act now
+                        </div>
+                        <div class="p-2 bg-yellow-100 border border-yellow-300 rounded">
+                            <strong>🟡 Important:</strong> High impact, low urgency - Plan action
+                        </div>
+                        <div class="p-2 bg-orange-100 border border-orange-300 rounded">
+                            <strong>🟠 Emerging:</strong> Low impact, high urgency - Watch closely
+                        </div>
+                        <div class="p-2 bg-green-100 border border-green-300 rounded">
+                            <strong>🟢 Low Priority:</strong> Low impact, low urgency - Track only
+                        </div>
+                    </div>
                 </div>
-            </div>
-            </div> <!-- End youtube-content -->
-        </div>
+
+                <div class="data-card">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Issue Severity by Category</h2>
+                    <p class="text-sm text-gray-600 mb-4">Distribution of issues across categories and severity levels.</p>
+                    <div id="severity-heatmap" class="overflow-x-auto">
+                        </div>
+                </div>
+
+                <div class="data-card">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Top 10 Critical Issues</h2>
+                    <div class="mb-4 flex flex-wrap gap-4">
+                        <select id="severity-filter" class="display-limit-selector" onchange="renderCriticalIssuesTable()">
+                            <option value="all">All Severities</option>
+                            <option value="critical">Critical Only</option>
+                            <option value="high">High Only</option>
+                            <option value="medium">Medium Only</option>
+                            <option value="low">Low Only</option>
+                        </select>
+                        <select id="category-filter" class="display-limit-selector" onchange="renderCriticalIssuesTable()">
+                            <option value="all">All Categories</option>
+                            <option value="Infrastructure Development">Infrastructure</option>
+                            <option value="Agricultural Support">Agriculture</option>
+                            <option value="Social Welfare Schemes">Social Welfare</option>
+                            <option value="Political Governance">Governance</option>
+                            <option value="Economic Development">Economy</option>
+                            <option value="Education & Healthcare">Education/Health</option>
+                            <option value="Corruption & Transparency">Corruption</option>
+                        </select>
+                        <select id="sentiment-filter" class="display-limit-selector" onchange="renderCriticalIssuesTable()">
+                            <option value="all">All Sentiments</option>
+                            <option value="positive">Positive Only</option>
+                            <option value="negative">Negative Only</option>
+                            <option value="neutral">Mixed Only</option>
+                        </select>
+                    </div>
+                    <div id="critical-issues-table" class="overflow-x-auto">
+                        </div>
+                </div>
+
+                <div class="data-card">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">VoterIQ Analysis Summary</h2>
+                    <div id="youtube-narrative" class="text-gray-700 leading-relaxed">
+                        <p>Loading YouTube analysis summary...</p>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">Political Issues Analysis</h2>
+                    <div id="youtube-political-issues-narrative" class="text-gray-700 leading-relaxed">
+                        <p>Loading political issues analysis...</p>
+                    </div>
+                </div>
+            </div> </div>
 
 
-        <!-- RAG Insights Tab -->
         <div id="rag-insights-tab" class="tab-content">
-            <!-- RAG Query Interface -->
-            <div class="rag-query-container p-6 rounded-lg shadow-md mb-8">
+            <div class="data-card bg-gradient-to-r from-purple-50 to-blue-50">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4">AI-Powered Insights</h2>
-                <div class="flex space-x-4 mb-4">
+                <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-4">
                     <input type="text" id="rag-query-input" placeholder="Ask a question about Andhra Pradesh politics..." 
-                           class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button onclick="submitRAGQuery()" class="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600">
+                           class="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm">
+                    <button onclick="submitRAGQuery()" class="bg-blue-500 text-white px-8 py-3 rounded-full hover:bg-blue-600 font-semibold shadow-md transition-all">
                         Ask AI
                     </button>
                 </div>
-                <div id="rag-response" class="bg-white p-4 rounded-md min-h-[200px]">
+                <div id="rag-response" class="bg-white p-4 rounded-lg min-h-[200px] border border-gray-200">
                     <p class="text-gray-500">Enter a question above to get AI-powered insights based on sentiment analysis data from polls and YouTube.</p>
                 </div>
             </div>
 
-            <!-- Sample Questions -->
-            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <div class="data-card">
                 <h3 class="text-xl font-bold text-gray-800 mb-4">Sample Analysis Questions</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button onclick="askSampleQuestion('What is the public sentiment on the Polavaram project?')" 
-                            class="text-left p-4 border border-gray-200 rounded-md hover:bg-gray-50">
+                            class="text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                         <strong>Polavaram Project:</strong> What is the public sentiment on the Polavaram project?
                     </button>
                     <button onclick="askSampleQuestion('What are the main political issues in Andhra Pradesh?')" 
-                            class="text-left p-4 border border-gray-200 rounded-md hover:bg-gray-50">
+                            class="text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                         <strong>Political Issues:</strong> What are the main political issues in Andhra Pradesh?
                     </button>
                     <button onclick="askSampleQuestion('How do voters perceive YSRCP governance?')" 
-                            class="text-left p-4 border border-gray-200 rounded-md hover:bg-gray-50">
+                            class="text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                         <strong>YSRCP Governance:</strong> How do voters perceive YSRCP governance?
                     </button>
                     <button onclick="askSampleQuestion('What infrastructure projects are being discussed?')" 
-                            class="text-left p-4 border border-gray-200 rounded-md hover:bg-gray-50">
+                            class="text-left p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                         <strong>Infrastructure:</strong> What infrastructure projects are being discussed?
                     </button>
                 </div>
             </div>
 
-            <!-- RAG System Status -->
-            <div class="bg-white p-6 rounded-lg shadow-md">
+            <div class="data-card">
                 <h3 class="text-xl font-bold text-gray-800 mb-4">RAG System Status</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-green-600" id="rag-documents-count">--</div>
-                        <div class="text-sm text-gray-600">Documents in Knowledge Base</div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="kpi-card rag p-6 text-center">
+                        <h3 class="text-lg font-semibold mb-2">Documents in Knowledge Base</h3>
+                        <p id="rag-documents-count" class="text-4xl font-bold mt-2">--</p>
                     </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-blue-600" id="rag-avg-response-time">--</div>
-                        <div class="text-sm text-gray-600">Avg Response Time (ms)</div>
+                    <div class="kpi-card rag p-6 text-center">
+                        <h3 class="text-lg font-semibold mb-2">Avg Response Time (ms)</h3>
+                        <p id="rag-avg-response-time" class="text-4xl font-bold mt-2">--</p>
                     </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-purple-600" id="rag-success-rate">--</div>
-                        <div class="text-sm text-gray-600">Success Rate</div>
+                    <div class="kpi-card rag p-6 text-center">
+                        <h3 class="text-lg font-semibold mb-2">Success Rate</h3>
+                        <p id="rag-success-rate" class="text-4xl font-bold mt-2">--</p>
                     </div>
                 </div>
             </div>
@@ -490,6 +567,29 @@
         let ragStatus = {};
         let chartInstances = {};
         // YouTube data is loaded on page load
+
+        // Copy diagnostic command to clipboard
+        function copyDiagnosticCommand() {
+            const command = 'python diagnose_narratives.py';
+            navigator.clipboard.writeText(command).then(() => {
+                console.log('Diagnostic command copied to clipboard:', command);
+                // Show a temporary success message
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('bg-green-200', 'text-green-800');
+                button.classList.remove('bg-yellow-200', 'text-yellow-800');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('bg-green-200', 'text-green-800');
+                    button.classList.add('bg-yellow-200', 'text-yellow-800');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy command to clipboard:', err);
+                alert('Failed to copy command. Please manually copy: python diagnose_narratives.py');
+            });
+        }
 
         // Helper function for parsing percentage strings
         function parsePercentage(value) {
@@ -558,7 +658,17 @@
         async function loadPollData() {
             try {
                 console.log('Loading poll data...');
-                const response = await fetch('./poll_sentiment_report.xlsx');
+                const timestamp = new Date().getTime();
+                console.log('Fetching poll file with timestamp:', timestamp);
+                
+                const response = await fetch('./poll_sentiment_report.xlsx?t=' + timestamp, {
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 
                 const data = await response.arrayBuffer();
@@ -590,11 +700,38 @@
                 console.log('Loading YouTube data...');
                 const timestamp = new Date().getTime();
                 console.log('Fetching Excel file with timestamp:', timestamp);
-                const response = await fetch('./youtube_sentiment_report.xlsx?t=' + timestamp);
+                
+                // Enhanced cache-busting with multiple techniques
+                const response = await fetch('./youtube_sentiment_report.xlsx?t=' + timestamp, {
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                // Get file modification time from response headers
+                const lastModified = response.headers.get('Last-Modified');
+                if (lastModified) {
+                    const fileDate = new Date(lastModified);
+                    const now = new Date();
+                    const ageMinutes = Math.floor((now - fileDate) / (1000 * 60));
+                    console.log(`Excel file last updated: ${fileDate.toLocaleString()} (${ageMinutes} minutes ago)`);
+                    
+                    // Display file modification time in UI
+                    const freshnessIndicator = document.getElementById('data-freshness');
+                    if (freshnessIndicator) {
+                        freshnessIndicator.innerHTML = `<span class="status-online"></span>Excel file last updated: ${fileDate.toLocaleString()}`;
+                    }
+                }
                 
                 const data = await response.arrayBuffer();
                 const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Debug: Log all available sheet names
+                console.log('All sheet names in workbook:', workbook.SheetNames);
                 
                 const rawSummary = workbook.Sheets['Overall Summary'] ? XLSX.utils.sheet_to_json(workbook.Sheets['Overall Summary']) : [];
                 
@@ -611,6 +748,21 @@
                 youtubeData.negative_issues = workbook.Sheets['Negative Issues'] ? XLSX.utils.sheet_to_json(workbook.Sheets['Negative Issues']) : [];
                 youtubeData.mixed_issues = workbook.Sheets['Mixed Issues'] ? XLSX.utils.sheet_to_json(workbook.Sheets['Mixed Issues']) : [];
                 
+                // Debug: Log issues data
+                console.log('🔍 Issues data loaded:');
+                console.log('Positive issues:', youtubeData.positive_issues.length, 'rows');
+                console.log('Negative issues:', youtubeData.negative_issues.length, 'rows');
+                console.log('Mixed issues:', youtubeData.mixed_issues.length, 'rows');
+                if (youtubeData.positive_issues.length > 0) {
+                    console.log('Sample positive issue:', youtubeData.positive_issues[0]);
+                    console.log('First positive issue Issue field:', youtubeData.positive_issues[0].Issue);
+                    console.log('First positive issue Occurrences field:', youtubeData.positive_issues[0].Occurrences);
+                }
+                if (youtubeData.negative_issues.length > 0) {
+                    console.log('Sample negative issue:', youtubeData.negative_issues[0]);
+                    console.log('First negative issue Issue field:', youtubeData.negative_issues[0].Issue);
+                }
+                
                 // Debug: Log the number of videos loaded
                 console.log('📊 Videos loaded:', youtubeData.videos.length);
                 if (youtubeData.videos.length > 0) {
@@ -618,1911 +770,5 @@
                     const ministerVideos = youtubeData.videos.filter(v => v['Video Title'].toLowerCase().includes('minister narayana'));
                     console.log('🎯 Minister Narayana videos found:', ministerVideos.length);
                 }
-                // Load narrative sheets without header option since they contain direct text content
-                youtubeData.narrative = workbook.Sheets['Narrative Summary'] 
-                  ? XLSX.utils.sheet_to_json(workbook.Sheets['Narrative Summary'], { header: 1, blankrows: false, defval: '' }) 
-                  : [];
-                youtubeData.political_issues_narrative = workbook.Sheets['Political Issues Narrative'] 
-                  ? XLSX.utils.sheet_to_json(workbook.Sheets['Political Issues Narrative'], { header: 1, blankrows: false, defval: '' }) 
-                  : [];
-                
-                // Log narrative data structure for debugging
-                console.log('Narrative Summary sheet loaded:', youtubeData.narrative);
-                console.log('Political Issues Narrative sheet loaded:', youtubeData.political_issues_narrative);
-                
-                console.log('YouTube data loaded:', youtubeData);
-                console.log('Summary data:', youtubeData.summary);
-                console.log('Videos data:', youtubeData.videos);
-                console.log('Positive keywords:', youtubeData.positive_keywords);
-                console.log('Narrative data:', youtubeData.narrative);
-                console.log('Political issues narrative data:', youtubeData.political_issues_narrative);
-                
-                // Immediate test of narrative extraction
-                if (youtubeData.narrative && youtubeData.narrative.length > 0) {
-                    console.log('=== IMMEDIATE NARRATIVE TEST ===');
-                    console.log('Narrative data structure:', youtubeData.narrative);
-                    console.log('First row:', youtubeData.narrative[0]);
-                    console.log('Data format:', Array.isArray(youtubeData.narrative[0]) ? 'array' : 'object');
-                    if (Array.isArray(youtubeData.narrative[0])) {
-                        console.log('First row array:', youtubeData.narrative[0]);
-                    } else {
-                        console.log('First row keys:', Object.keys(youtubeData.narrative[0]));
-                    }
-                    
-                    // Test the extraction function directly
-                    const testResult = extractNarrativeText(youtubeData.narrative, NARRATIVE_KEY_CANDIDATES);
-                    console.log('Direct extraction result:', testResult ? testResult.substring(0, 200) + '...' : 'NULL');
-                    
-                    // Test findInRow directly
-                    const findInRowResult = findInRow(youtubeData.narrative[0], NARRATIVE_KEY_CANDIDATES);
-                    console.log('findInRow result:', findInRowResult ? findInRowResult.substring(0, 200) + '...' : 'NULL');
-                    
-                    // Test findEmptyKeyInRow directly
-                    const findEmptyResult = findEmptyKeyInRow(youtubeData.narrative[0]);
-                    console.log('findEmptyKeyInRow result:', findEmptyResult ? findEmptyResult.substring(0, 200) + '...' : 'NULL');
-                    
-                    console.log('=== END NARRATIVE TEST ===');
-                } else {
-                    console.log('❌ No narrative data available for testing');
-                }
-                
-                // Hide loading state and show content
-                document.getElementById('youtube-loading').classList.add('hidden');
-                document.getElementById('youtube-content').classList.remove('hidden');
-                
-                // Test narrative extraction immediately
-                console.log('Testing narrative extraction...');
-                if (youtubeData.narrative && youtubeData.narrative.length > 0) {
-                    const testResult = extractNarrativeText(youtubeData.narrative, NARRATIVE_KEY_CANDIDATES);
-                    console.log('Direct narrative test result:', testResult ? testResult.substring(0, 100) + '...' : 'No result');
-                } else {
-                    console.log('No narrative data available for testing');
-                }
-                
-                renderYouTubeData();
-            } catch (error) {
-                console.error('Error loading YouTube data:', error);
-                
-                // Hide loading state and show error
-                document.getElementById('youtube-loading').classList.add('hidden');
-                document.getElementById('youtube-error-message').textContent = 'Error loading YouTube data: ' + error.message;
-                document.getElementById('youtube-error').classList.remove('hidden');
-            }
-        }
-
-        // Convert YouTube summary from column-based format to canonical format
-        function convertYouTubeSummaryToCanonical(rawSummary) {
-            console.log('🔄 Converting summary data, input:', rawSummary);
-            if (!rawSummary || rawSummary.length === 0) {
-                console.log('❌ No summary data to convert');
-                return [];
-            }
-
-            // Handle column-based format (first row contains the data)
-            if (rawSummary.length >= 1) {
-                const dataRow = rawSummary[0];
-                console.log('📋 Using first row for summary:', dataRow);
-                
-                // Convert to canonical format using column headers
-                const canonicalRow = {
-                    total_videos: parseInt(dataRow.total_videos) || 0,
-                    pos_comments: parseInt(dataRow.pos_comments) || 0,
-                    neg_comments: parseInt(dataRow.neg_comments) || 0,
-                    neu_comments: parseInt(dataRow.neu_comments) || 0,
-                    positive_percentage: 0,
-                    negative_percentage: 0,
-                    neutral_percentage: 0,
-                    overall_sentiment_score: parseFloat(dataRow.overall_sentiment_score) || 0
-                };
-
-                // Calculate total comments from individual counts
-                canonicalRow.total_comments = canonicalRow.pos_comments + canonicalRow.neg_comments + canonicalRow.neu_comments;
-
-                // Calculate percentages from comment counts
-                const totalComments = canonicalRow.total_comments;
-                if (totalComments > 0) {
-                    canonicalRow.positive_percentage = Math.round((canonicalRow.pos_comments / totalComments) * 100);
-                    canonicalRow.negative_percentage = Math.round((canonicalRow.neg_comments / totalComments) * 100);
-                    canonicalRow.neutral_percentage = Math.round((canonicalRow.neu_comments / totalComments) * 100);
-                }
-
-                console.log('✅ Final canonical summary:', canonicalRow);
-                return [canonicalRow];
-            }
-
-            // Fallback: try to extract data from key-value pairs (old format)
-            const data = {};
-            for (const row of rawSummary) {
-                const key = row['YouTube Sentiment Analysis Report'];
-                const value = row['Unnamed: 1'];
-                if (key && value !== undefined && value !== null) {
-                    data[key] = value;
-                }
-            }
-
-            // Convert to canonical format
-            const canonicalRow = {
-                total_videos: parseInt(data['Total Videos Analyzed']) || 0,
-                total_comments: parseInt(data['Total Comments Analyzed']) || 0,
-                pos_comments: 0, // Will be calculated from percentages
-                neg_comments: 0, // Will be calculated from percentages
-                neu_comments: 0, // Will be calculated from percentages
-                positive_percentage: 0,
-                negative_percentage: 0,
-                neutral_percentage: 0,
-                overall_sentiment_score: parseFloat(data['Average Confidence Score']) || 0
-            };
-
-            // Parse sentiment distribution
-            const sentimentDist = data['Overall Sentiment Distribution'];
-            if (sentimentDist && typeof sentimentDist === 'string') {
-                const posMatch = sentimentDist.match(/(\d+\.?\d*)% Positive/);
-                const negMatch = sentimentDist.match(/(\d+\.?\d*)% Negative/);
-                const neuMatch = sentimentDist.match(/(\d+\.?\d*)% Neutral/);
-                
-                canonicalRow.positive_percentage = posMatch ? parseFloat(posMatch[1]) : 0;
-                canonicalRow.negative_percentage = negMatch ? parseFloat(negMatch[1]) : 0;
-                canonicalRow.neutral_percentage = neuMatch ? parseFloat(neuMatch[1]) : 0;
-
-                // Calculate comment counts from percentages
-                const totalComments = canonicalRow.total_comments;
-                if (totalComments > 0) {
-                    canonicalRow.pos_comments = Math.round((canonicalRow.positive_percentage / 100) * totalComments);
-                    canonicalRow.neg_comments = Math.round((canonicalRow.negative_percentage / 100) * totalComments);
-                    canonicalRow.neu_comments = totalComments - canonicalRow.pos_comments - canonicalRow.neg_comments;
-                }
-            }
-
-            return [canonicalRow];
-        }
-
-
-        // Load RAG system status
-        async function loadRAGStatus() {
-            try {
-                console.log('Loading RAG status from /api/status...');
-                const response = await fetch('/api/status');
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('RAG status API response:', data);
-                    
-                    ragStatus = {
-                        documentsCount: data.documents_count || 0,
-                        lastUpdate: data.last_update || null,
-                        status: data.status || "unknown"
-                    };
-                    
-                    // Log specific error conditions
-                    if (data.status && data.status.includes('error')) {
-                        console.error('RAG API returned error status:', data.status);
-                        console.error('This likely indicates missing environment variables or Supabase connection issues');
-                    }
-                } else {
-                    console.error(`RAG status API error: HTTP ${response.status} ${response.statusText}`);
-                    const errorText = await response.text();
-                    console.error('Error response:', errorText);
-                    
-                    // Fallback to default values on error
-                    ragStatus = {
-                        documentsCount: 0,
-                        lastUpdate: null,
-                        status: `error: http_${response.status}`
-                    };
-                }
-            } catch (error) {
-                console.error('Error loading RAG status:', error);
-                console.error('This could indicate the API server is not running or not accessible');
-                
-                // Fallback to default values on error
-                ragStatus = {
-                    documentsCount: 0,
-                    lastUpdate: null,
-                    status: "error: connection_failed"
-                };
-            }
-            renderRAGStatus();
-        }
-
-        // Render poll data
-        function renderPollData() {
-            try {
-                if (!pollData.summary || pollData.summary.length === 0) {
-                    console.warn('No poll summary data available');
-                    return;
-                }
-
-                // Update KPI cards
-                const tdpSupport = pollData.summary.find(row => row.Metric === "Overall TDP Support");
-                const ysrcpSupport = pollData.summary.find(row => row.Metric === "Overall YSRCP Support");
-                const swingVoter = pollData.summary.find(row => row.Metric === "Overall Swing Voter Percentage");
-
-                // Debug logging for KPI parsing
-                console.log('KPI Data:', { tdpSupport, ysrcpSupport, swingVoter });
-                
-                document.getElementById('tdp-support').textContent = tdpSupport ? parsePercentage(tdpSupport.Value).toFixed(1) + '%' : '--';
-                document.getElementById('ysrcp-support').textContent = ysrcpSupport ? parsePercentage(ysrcpSupport.Value).toFixed(1) + '%' : '--';
-                document.getElementById('swing-voter').textContent = swingVoter ? parsePercentage(swingVoter.Value).toFixed(1) + '%' : '--';
-                
-                // Debug logging for parsed values
-                console.log('Parsed KPI Values:', {
-                    tdp: parsePercentage(tdpSupport?.Value),
-                    ysrcp: parsePercentage(ysrcpSupport?.Value),
-                    swing: parsePercentage(swingVoter?.Value)
-                });
-
-                // Check for swing voter issues in summary data
-                let swingVoterIssues = pollData.summary.find(row => row.Metric === "Swing Voter Issues");
-                
-                // Fallback to simple string format if JSON is absent
-                if (!swingVoterIssues || !swingVoterIssues.Value) {
-                    swingVoterIssues = pollData.summary.find(row => row.Metric === "Swing Voter Issues (Simple)");
-                }
-                
-                if (swingVoterIssues && swingVoterIssues.Value) {
-                    console.log('Swing Voter Issues found:', swingVoterIssues.Value);
-                    // Parse and display swing voter issues if they exist
-                    try {
-                        const issues = JSON.parse(swingVoterIssues.Value);
-                        console.log('Parsed swing voter issues:', issues);
-                        // If the parsed value is an object, convert to flat array
-                        if (typeof issues === 'object' && !Array.isArray(issues)) {
-                            const flatIssues = Object.values(issues).flat();
-                            renderSwingVoterIssues(flatIssues);
-                        } else {
-                            renderSwingVoterIssues(issues);
-                        }
-                    } catch (e) {
-                        console.log('Swing voter issues (raw):', swingVoterIssues.Value);
-                        // Handle comma-separated text format
-                        const issues = swingVoterIssues.Value.split(',').map(issue => issue.trim()).filter(issue => issue);
-                        renderSwingVoterIssues(issues);
-                    }
-                }
-
-                // Render key issues from detailed analysis
-                renderPollIssues();
-
-                // Render charts
-                renderPollCharts();
-                renderIntegratedSummary();
-            } catch (error) {
-                console.error('Error rendering poll data:', error);
-                document.getElementById('integrated-summary').innerHTML = 
-                    '<p class="text-red-500">Error rendering poll data: ' + error.message + '</p>';
-            }
-        }
-
-        // Helper function to safely compute display limit
-        function getDisplayLimit(selectId, sourceArray) {
-            const limitSelector = document.getElementById(selectId);
-            const source = sourceArray || [];
-            
-            // Add null check for dropdown element
-            if (!limitSelector) {
-                console.warn('Dropdown element not found for ID:', selectId);
-                return 10;
-            }
-            
-            const selectedValue = limitSelector.value;
-            
-            // Check if "Show All" is selected
-            if (selectedValue === 'all') {
-                return source.length;
-            }
-            
-            // Parse and validate the selected number
-            const parsedLimit = parseInt(selectedValue);
-            if (Number.isFinite(parsedLimit)) {
-                return parsedLimit;
-            }
-            
-            // Fallback to default value
-            return 10;
-        }
-
-        // Helper function to render tags with optional styling
-        function renderTags(containerId, items, style = {}) {
-            const container = document.getElementById(containerId);
-            container.innerHTML = '';
-
-            if (!items || items.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">No data available for this category</p>';
-                return;
-            }
-
-            items.forEach(item => {
-                const tag = document.createElement('span');
-                tag.className = 'keyword-tag';
-                
-                // Apply optional styling
-                if (style.backgroundColor) tag.style.backgroundColor = style.backgroundColor;
-                if (style.color) tag.style.color = style.color;
-                if (style.className) tag.className += ` ${style.className}`;
-                
-                // Set content and tooltip
-                tag.textContent = item.text || item.keyword || item.issue || 'Unknown';
-                if (item.tooltip) tag.title = item.tooltip;
-                
-                container.appendChild(tag);
-            });
-        }
-
-        // Render YouTube data
-        function renderYouTubeData() {
-            console.log('Rendering YouTube data...');
-            console.log('YouTube data summary:', youtubeData.summary);
-            
-            if (!youtubeData.summary || youtubeData.summary.length === 0) {
-                console.warn('No YouTube summary data available');
-                // Do not return; continue rendering charts/issues if their sheets exist
-            }
-
-            // Update KPI cards - YouTube data is in row format, not column format
-            const summaryRow = youtubeData.summary && youtubeData.summary.length > 0 ? youtubeData.summary[0] : null;
-            console.log('Summary row:', summaryRow);
-
-            // Update YouTube KPI cards
-            if (summaryRow) {
-                const totalVideos = Number(summaryRow.total_videos) || 0;
-                const totalComments = Number(summaryRow.total_comments) || 0;
-                const sentimentScore = Number(summaryRow.overall_sentiment_score) || 0;
-                
-                document.getElementById('youtube-total-videos').textContent = totalVideos.toLocaleString();
-                document.getElementById('youtube-total-comments').textContent = totalComments.toLocaleString();
-                document.getElementById('youtube-sentiment-score').textContent = (sentimentScore * 100).toFixed(1) + '%';
-                
-                console.log('YouTube KPI cards updated:', { totalVideos, totalComments, sentimentScore });
-            } else {
-                console.warn('No summary row available for YouTube KPI cards');
-            }
-
-            console.log('KPI cards updated, rendering charts...');
-            // Render charts
-            renderYouTubeCharts();
-            renderTopPositiveIssuesChart();
-            renderTopNegativeIssuesChart();
-            renderYouTubeKeywords();
-            renderYouTubeIssues();
-            renderYouTubeNarrative();
-            renderYouTubePoliticalIssuesNarrative();
-        }
-
-        // Safe text rendering helper that escapes HTML and converts newlines
-        function safeRenderText(text) {
-            if (!text) return '';
-            
-            // Escape HTML characters
-            const escapedText = text
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#x27;');
-            
-            // Convert newlines to <br> tags
-            return escapedText.replace(/\n/g, '<br>');
-        }
-
-        // Helper function to find text in a row using possible keys
-        function findInRow(row, possibleKeys) {
-            for (const key of possibleKeys) {
-                if ((row[key] !== null && row[key] !== undefined) && row[key].toString().trim()) {
-                    return row[key].toString().trim();
-                }
-            }
-            return null;
-        }
-
-        // Helper function to find text in a row using __EMPTY keys
-        function findEmptyKeyInRow(row) {
-            for (const key of Object.keys(row)) {
-                if (key.startsWith('__EMPTY') && (row[key] !== null && row[key] !== undefined) && row[key].toString().trim()) {
-                    return row[key].toString().trim();
-                }
-            }
-            return null;
-        }
-
-        // Constants for narrative key candidates
-        const NARRATIVE_KEY_CANDIDATES = ['summary', 'Summary', 'narrative_summary', 'Narrative_Summary', 'Narrative', 'Text', 'content', '__EMPTY', '__EMPTY_0', '__EMPTY_1'];
-        const POLITICAL_NARRATIVE_KEY_CANDIDATES = ['summary', 'Summary', 'political_issues_summary', 'Political_Issues_Summary', 'Narrative', 'Text', 'content', '__EMPTY', '__EMPTY_0', '__EMPTY_1'];
-
-        // Helper function to extract narrative text from rows
-        function extractNarrativeText(rows, possibleKeys) {
-            console.log('extractNarrativeText called with:', rows, possibleKeys);
-            if (!rows || rows.length === 0) {
-                console.log('No rows provided');
-                return null;
-            }
-
-            console.log('First row:', rows[0]);
-            console.log('Data format:', Array.isArray(rows[0]) ? 'array' : 'object');
-
-            // Check if data is in array format (from {header: 1} option)
-            if (Array.isArray(rows[0])) {
-                console.log('Processing array-based data format');
-                const allTexts = [];
-                
-                // Iterate through all rows and collect text from first column
-                for (const row of rows) {
-                    if (Array.isArray(row) && row.length > 0 && row[0]) {
-                        const text = row[0].toString().trim();
-                        if (text) {
-                            allTexts.push(text);
-                            console.log('Extracted from array format:', text.substring(0, 100) + '...');
-                        }
-                    }
-                }
-                
-                if (allTexts.length > 0) {
-                    const summaryText = allTexts.join('\n\n');
-                    console.log('Array format extraction successful, length:', summaryText.length);
-                    return summaryText;
-                }
-                
-                console.log('No text found in array format');
-                return null;
-            }
-
-            // EXISTING: Object-based data format (fallback for backward compatibility)
-            console.log('Processing object-based data format');
-            console.log('First row keys:', Object.keys(rows[0]));
-
-            // Try first row with possible keys
-            let summaryText = findInRow(rows[0], possibleKeys);
-            console.log('findInRow result:', summaryText);
-            
-            // If not found, try __EMPTY keys in first row
-            if (!summaryText) {
-                summaryText = findEmptyKeyInRow(rows[0]);
-                console.log('findEmptyKeyInRow result:', summaryText);
-            }
-            
-            // If still empty, check if the row has a single string value
-            if (!summaryText) {
-                const values = Object.values(rows[0]).filter(val => (val !== null && val !== undefined) && val.toString().trim());
-                console.log('Filtered values:', values);
-                if (values.length === 1) {
-                    summaryText = values[0].toString().trim();
-                    console.log('Using single value:', summaryText);
-                }
-            }
-            
-            // If multiple rows exist, join them with paragraph breaks
-            if (!summaryText && rows.length > 1) {
-                const allTexts = [];
-                for (const row of rows) {
-                    let foundForRow = false;
-                    const text = findInRow(row, possibleKeys);
-                    if (text) {
-                        allTexts.push(text);
-                        foundForRow = true;
-                    }
-                    
-                    // Also check for __EMPTY keys in multi-row scenario
-                    if (!foundForRow) {
-                        const emptyText = findEmptyKeyInRow(row);
-                        if (emptyText) {
-                            allTexts.push(emptyText);
-                        }
-                    }
-                }
-                if (allTexts.length > 0) {
-                    summaryText = allTexts.join('\n\n');
-                }
-            }
-            
-            return summaryText;
-        }
-
-        // Render YouTube narrative
-        function renderYouTubeNarrative() {
-            console.log('renderYouTubeNarrative called');
-            const narrativeContainer = document.getElementById('youtube-narrative');
-            
-            // Check if narrative sheet exists
-            if (!youtubeData.narrative || youtubeData.narrative.length === 0) {
-                console.log('No narrative sheet found. Available sheets:', Object.keys(youtubeData));
-                narrativeContainer.innerHTML = '<p class="text-gray-500">No YouTube analysis narrative available.</p>';
-                return;
-            }
-            
-            // Add debug logging
-            console.log('Narrative data:', youtubeData.narrative);
-            console.log('Narrative data format:', Array.isArray(youtubeData.narrative[0]) ? 'array' : 'object');
-            if (Array.isArray(youtubeData.narrative[0])) {
-                console.log('First row array:', youtubeData.narrative[0]);
-            } else {
-                console.log('Narrative row keys:', Object.keys(youtubeData.narrative[0]));
-            }
-            
-            // Try keys in order of preference - labeled keys first, then __EMPTY keys
-            const summaryText = extractNarrativeText(youtubeData.narrative, NARRATIVE_KEY_CANDIDATES);
-            console.log('Extracted summary text:', summaryText);
-            
-            if (summaryText) {
-                narrativeContainer.innerHTML = `
-                    <div class="space-y-4">
-                        <p>${safeRenderText(summaryText)}</p>
-                    </div>
-                `;
-            } else {
-                narrativeContainer.innerHTML = '<p class="text-gray-500">No narrative content found in available data.</p>';
-            }
-        }
-
-        // Render YouTube political issues narrative
-        function renderYouTubePoliticalIssuesNarrative() {
-            const narrativeContainer = document.getElementById('youtube-political-issues-narrative');
-            
-            // Check if political issues narrative sheet exists
-            if (!youtubeData.political_issues_narrative || youtubeData.political_issues_narrative.length === 0) {
-                console.log('No political issues narrative sheet found. Available sheets:', Object.keys(youtubeData));
-                narrativeContainer.innerHTML = '<p class="text-gray-500">No political issues analysis narrative available.</p>';
-                return;
-            }
-            
-            // Add debug logging
-            console.log('Political issues narrative data format:', Array.isArray(youtubeData.political_issues_narrative[0]) ? 'array' : 'object');
-            if (Array.isArray(youtubeData.political_issues_narrative[0])) {
-                console.log('First row array:', youtubeData.political_issues_narrative[0]);
-            } else {
-                console.log('Political issues narrative row keys:', Object.keys(youtubeData.political_issues_narrative[0]));
-            }
-            
-            // Try keys in order of preference - labeled keys first, then __EMPTY keys
-            const summaryText = extractNarrativeText(youtubeData.political_issues_narrative, POLITICAL_NARRATIVE_KEY_CANDIDATES);
-            
-            if (summaryText) {
-                narrativeContainer.innerHTML = `
-                    <div class="space-y-4">
-                        <p>${safeRenderText(summaryText)}</p>
-                    </div>
-                `;
-            } else {
-                narrativeContainer.innerHTML = '<p class="text-gray-500">No political issues narrative content found in available data.</p>';
-            }
-        }
-
-
-        // Render RAG status
-        function renderRAGStatus() {
-            const documentsCountElement = document.getElementById('rag-documents-count');
-            const avgResponseTimeElement = document.getElementById('rag-avg-response-time');
-            const successRateElement = document.getElementById('rag-success-rate');
-            
-            // Update document count with status indicator
-            documentsCountElement.textContent = ragStatus.documentsCount;
-            
-            // Add visual indicators based on status
-            if (ragStatus.status && ragStatus.status.includes('error')) {
-                documentsCountElement.style.color = '#ef4444'; // red
-                documentsCountElement.title = `Error: ${ragStatus.status}`;
-                
-                // Show error message in console for debugging
-                console.error('RAG Status Error:', ragStatus.status);
-                if (ragStatus.status.includes('missing_credentials')) {
-                    console.error('Fix: Check .env file for SUPABASE_URL, SUPABASE_KEY, OPENAI_API_KEY');
-                } else if (ragStatus.status.includes('connection_failed')) {
-                    console.error('Fix: Ensure API server is running with "python run_dashboard.py"');
-                }
-            } else if (ragStatus.documentsCount === 0) {
-                documentsCountElement.style.color = '#f59e0b'; // amber
-                documentsCountElement.title = 'No documents found - check database or run RAG update';
-            } else {
-                documentsCountElement.style.color = '#10b981'; // green
-                documentsCountElement.title = 'RAG system operational';
-            }
-            
-            // Update other metrics
-            avgResponseTimeElement.textContent = ragStatus.avgResponseTime ?? '--';
-            const sr = ragStatus.successRate;
-            successRateElement.textContent = (sr ?? null) !== null ? sr + '%' : '--';
-        }
-
-        // Render poll issues from detailed analysis
-        function renderPollIssues() {
-            try {
-                if (!pollData.detailed || pollData.detailed.length === 0) {
-                    console.warn('No detailed poll data available for issues');
-                    return;
-                }
-
-                const issuesContainer = document.getElementById('poll-issues');
-                issuesContainer.innerHTML = '';
-
-                // Extract unique issues from detailed analysis
-                const allIssues = new Set();
-                pollData.detailed.forEach(item => {
-                    if (item.question_issues) {
-                        const issues = item.question_issues.split(',').map(issue => issue.trim());
-                        issues.forEach(issue => {
-                            if (issue && issue.length > 2) {
-                                allIssues.add(issue);
-                            }
-                        });
-                    }
-                });
-
-                // Debug logging for issues extraction
-                console.log('Extracted issues:', Array.from(allIssues));
-
-                // Create issue tags
-                const issuesArray = Array.from(allIssues).slice(0, 20); // Limit to 20 issues
-                issuesArray.forEach(issue => {
-                    const tag = document.createElement('span');
-                    tag.className = 'keyword-tag';
-                    tag.textContent = issue;
-                    issuesContainer.appendChild(tag);
-                });
-
-                if (issuesArray.length === 0) {
-                    issuesContainer.innerHTML = '<p class="text-gray-500">No issues found in poll data</p>';
-                }
-            } catch (error) {
-                console.error('Error rendering poll issues:', error);
-                document.getElementById('poll-issues').innerHTML = 
-                    '<p class="text-red-500">Error loading issues: ' + error.message + '</p>';
-            }
-        }
-
-        // Render swing voter issues
-        function renderSwingVoterIssues(issues) {
-            try {
-                const issuesContainer = document.getElementById('swing-issues');
-                issuesContainer.innerHTML = '';
-
-                if (!issues || issues.length === 0) {
-                    issuesContainer.innerHTML = '<p class="text-gray-500">No swing voter issues found</p>';
-                    return;
-                }
-
-                console.log('Rendering swing voter issues:', issues);
-
-                // Create issue tags for each swing voter issue
-                issues.forEach(issue => {
-                    if (issue && issue.trim().length > 2) {
-                        const tag = document.createElement('span');
-                        tag.className = 'keyword-tag';
-                        tag.textContent = issue.trim();
-                        issuesContainer.appendChild(tag);
-                    }
-                });
-
-                if (issuesContainer.children.length === 0) {
-                    issuesContainer.innerHTML = '<p class="text-gray-500">No valid swing voter issues found</p>';
-                }
-            } catch (error) {
-                console.error('Error rendering swing voter issues:', error);
-                document.getElementById('swing-issues').innerHTML = 
-                    '<p class="text-red-500">Error loading swing voter issues: ' + error.message + '</p>';
-            }
-        }
-
-        // Render poll charts
-        function renderPollCharts() {
-            try {
-                // Voter leaning chart
-                const voterLeaningCtx = document.getElementById('voterLeaningChart').getContext('2d');
-                if (chartInstances.voterLeaning) {
-                    chartInstances.voterLeaning.destroy();
-                }
-
-            const labels = ["TDP Support", "YSRCP Support", "Swing Voters"];
-            const colors = ["#34D399", "#EF4444", "#FBBF24"];
-            
-            const dataValues = labels.map(label => {
-                let metricName = "";
-                if (label === "TDP Support") metricName = "Overall TDP Support";
-                else if (label === "YSRCP Support") metricName = "Overall YSRCP Support";
-                else if (label === "Swing Voters") metricName = "Overall Swing Voter Percentage";
-                
-                const rowData = pollData.summary.find(row => row.Metric === metricName);
-                if (rowData && rowData.Value) {
-                    return parsePercentage(rowData.Value);
-                }
-                return 0;
-            });
-
-            chartInstances.voterLeaning = new Chart(voterLeaningCtx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: dataValues,
-                        backgroundColor: colors,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: 'top' },
-                        title: { display: true, text: 'Voter Leaning Breakdown' }
-                    }
-                }
-            });
-
-            // Issue chart
-            const issueCtx = document.getElementById('pollIssueChart').getContext('2d');
-            if (chartInstances.pollIssue) {
-                chartInstances.pollIssue.destroy();
-            }
-
-            // Use real data from detailed analysis
-            let issueData = {
-                labels: ['Development', 'Welfare', 'Corruption', 'Infrastructure', 'Education'],
-                tdp: [45, 38, 52, 41, 43],
-                ysrcp: [55, 62, 48, 59, 57]
-            };
-
-            // Try to extract real data from detailed analysis
-            if (pollData.detailed && pollData.detailed.length > 0) {
-                const issueStats = {};
-                
-                pollData.detailed.forEach(item => {
-                    if (item.question_issues) {
-                        const issues = item.question_issues.split(',').map(issue => issue.trim());
-                        issues.forEach(issue => {
-                            if (issue && issue.length > 2) {
-                                if (!issueStats[issue]) {
-                                    issueStats[issue] = { tdp: 0, ysrcp: 0, tdpCount: 0, ysrcpCount: 0 };
-                                }
-                                
-                                // Only add to TDP if value is valid (including 0%)
-                                const tdpRaw = item.TDP_support_percent;
-                                const tdpValue = parsePercentage(tdpRaw);
-                                if (!Number.isNaN(tdpValue) && String(tdpRaw ?? '').trim() !== '') {
-                                    issueStats[issue].tdp += tdpValue;
-                                    issueStats[issue].tdpCount += 1;
-                                }
-                                
-                                // Only add to YSRCP if value is valid (including 0%)
-                                const ysrcpRaw = item.YSRCP_support_percent;
-                                const ysrcpValue = parsePercentage(ysrcpRaw);
-                                if (!Number.isNaN(ysrcpValue) && String(ysrcpRaw ?? '').trim() !== '') {
-                                    issueStats[issue].ysrcp += ysrcpValue;
-                                    issueStats[issue].ysrcpCount += 1;
-                                }
-                                
-                                // Debug logging for issue parsing
-                                console.log('Issue parsing:', {
-                                    issue,
-                                    tdpRaw: item.TDP_support_percent,
-                                    tdpParsed: tdpValue,
-                                    ysrcpRaw: item.YSRCP_support_percent,
-                                    ysrcpParsed: ysrcpValue
-                                });
-                            }
-                        });
-                    }
-                });
-
-                // Get top 10 issues by total count (TDP + YSRCP)
-                const topIssues = Object.entries(issueStats)
-                    .sort((a, b) => (b[1].tdpCount + b[1].ysrcpCount) - (a[1].tdpCount + a[1].ysrcpCount))
-                    .slice(0, 10);
-
-                if (topIssues.length > 0) {
-                    issueData = {
-                        labels: topIssues.map(([issue]) => issue),
-                        tdp: topIssues.map(([, stats]) => stats.tdpCount > 0 ? stats.tdp / stats.tdpCount : 0),
-                        ysrcp: topIssues.map(([, stats]) => stats.ysrcpCount > 0 ? stats.ysrcp / stats.ysrcpCount : 0)
-                    };
-                }
-            }
-
-            chartInstances.pollIssue = new Chart(issueCtx, {
-                type: 'bar',
-                data: {
-                    labels: issueData.labels,
-                    datasets: [{
-                        label: 'TDP Support %',
-                        data: issueData.tdp,
-                        backgroundColor: 'rgba(52, 211, 153, 0.8)',
-                    }, {
-                        label: 'YSRCP Support %',
-                        data: issueData.ysrcp,
-                        backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        y: { beginAtZero: true, max: 100 }
-                    }
-                }
-            });
-            } catch (error) {
-                console.error('Error rendering poll charts:', error);
-                // Show error message in chart containers
-                document.getElementById('voterLeaningChart').parentElement.innerHTML = 
-                    '<div class="flex items-center justify-center h-64 text-red-500">Error loading voter leaning chart</div>';
-                document.getElementById('pollIssueChart').parentElement.innerHTML = 
-                    '<div class="flex items-center justify-center h-64 text-red-500">Error loading issue chart</div>';
-            }
-        }
-
-        // Render YouTube issues distribution chart
-        function renderYouTubeIssuesDistribution() {
-            try {
-                // Aggregate issues from positive, negative, and mixed issues
-                const issuesMap = {};
-                
-                // Process positive issues
-                if (youtubeData.positive_issues && youtubeData.positive_issues.length > 0) {
-                    youtubeData.positive_issues.forEach(issue => {
-                        const issueName = issue.Issue || issue.issue || 'Unknown';
-                        if (!issuesMap[issueName]) {
-                            issuesMap[issueName] = { pos: 0, neg: 0, neu: 0, total: 0 };
-                        }
-                        
-                        // Use explicit counts if available, else reconstruct from percentages
-                        if (issue.positive_count !== undefined) {
-                            issuesMap[issueName].pos += Number(issue.positive_count) || 0;
-                        } else if (issue.mention_count && issue.positive_percentage) {
-                            issuesMap[issueName].pos += Math.round(Number(issue.mention_count) * Number(issue.positive_percentage) / 100) || 0;
-                        } else if (issue.mention_count) {
-                            issuesMap[issueName].pos += Number(issue.mention_count) || 0;
-                        }
-                        
-                        issuesMap[issueName].total = issuesMap[issueName].pos + issuesMap[issueName].neg + issuesMap[issueName].neu;
-                    });
-                }
-                
-                // Process negative issues
-                if (youtubeData.negative_issues && youtubeData.negative_issues.length > 0) {
-                    youtubeData.negative_issues.forEach(issue => {
-                        const issueName = issue.Issue || issue.issue || 'Unknown';
-                        if (!issuesMap[issueName]) {
-                            issuesMap[issueName] = { pos: 0, neg: 0, neu: 0, total: 0 };
-                        }
-                        
-                        // Use explicit counts if available, else reconstruct from percentages
-                        if (issue.negative_count !== undefined) {
-                            issuesMap[issueName].neg += Number(issue.negative_count) || 0;
-                        } else if (issue.mention_count && issue.negative_percentage) {
-                            issuesMap[issueName].neg += Math.round(Number(issue.mention_count) * Number(issue.negative_percentage) / 100) || 0;
-                        } else if (issue.mention_count) {
-                            issuesMap[issueName].neg += Number(issue.mention_count) || 0;
-                        }
-                        
-                        issuesMap[issueName].total = issuesMap[issueName].pos + issuesMap[issueName].neg + issuesMap[issueName].neu;
-                    });
-                }
-                
-                // Process mixed issues
-                if (youtubeData.mixed_issues && youtubeData.mixed_issues.length > 0) {
-                    youtubeData.mixed_issues.forEach(issue => {
-                        const issueName = issue.Issue || issue.issue || 'Unknown';
-                        if (!issuesMap[issueName]) {
-                            issuesMap[issueName] = { pos: 0, neg: 0, neu: 0, total: 0 };
-                        }
-                        
-                        // Use explicit counts if available, else reconstruct from percentages
-                        if (issue.positive_count !== undefined) {
-                            issuesMap[issueName].pos += Number(issue.positive_count) || 0;
-                        } else if (issue.mention_count && issue.positive_percentage) {
-                            issuesMap[issueName].pos += Math.round(Number(issue.mention_count) * Number(issue.positive_percentage) / 100) || 0;
-                        }
-                        
-                        if (issue.negative_count !== undefined) {
-                            issuesMap[issueName].neg += Number(issue.negative_count) || 0;
-                        } else if (issue.mention_count && issue.negative_percentage) {
-                            issuesMap[issueName].neg += Math.round(Number(issue.mention_count) * Number(issue.negative_percentage) / 100) || 0;
-                        }
-                        
-                        if (issue.neutral_count !== undefined) {
-                            issuesMap[issueName].neu += Number(issue.neutral_count) || 0;
-                        } else if (issue.mention_count && issue.neutral_percentage) {
-                            issuesMap[issueName].neu += Math.round(Number(issue.mention_count) * Number(issue.neutral_percentage) / 100) || 0;
-                        }
-                        
-                        issuesMap[issueName].total = issuesMap[issueName].pos + issuesMap[issueName].neg + issuesMap[issueName].neu;
-                    });
-                }
-                
-                // Sort issues by total and take top 10
-                const topIssues = Object.entries(issuesMap)
-                    .sort((a, b) => b[1].total - a[1].total)
-                    .slice(0, 10);
-                
-                if (topIssues.length === 0) {
-                    document.getElementById('youtubeSentimentChart').parentElement.innerHTML = 
-                        '<div class="flex items-center justify-center h-64 text-gray-500">No political issues data available</div>';
-                    return;
-                }
-                
-                // Prepare chart data
-                const labels = topIssues.map(([issue]) => issue);
-                const positiveData = topIssues.map(([, data]) => data.pos);
-                const negativeData = topIssues.map(([, data]) => data.neg);
-                const neutralData = topIssues.map(([, data]) => data.neu);
-                
-                // Create stacked bar chart
-                const sentimentCtx = document.getElementById('youtubeSentimentChart').getContext('2d');
-                if (chartInstances.youtubeSentiment) {
-                    chartInstances.youtubeSentiment.destroy();
-                }
-                
-                chartInstances.youtubeSentiment = new Chart(sentimentCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Positive',
-                            data: positiveData,
-                            backgroundColor: '#10B981',
-                            stack: 'sentiment'
-                        }, {
-                            label: 'Negative',
-                            data: negativeData,
-                            backgroundColor: '#EF4444',
-                            stack: 'sentiment'
-                        }, {
-                            label: 'Neutral',
-                            data: neutralData,
-                            backgroundColor: '#6B7280',
-                            stack: 'sentiment'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { 
-                                position: 'bottom',
-                                labels: {
-                                    padding: 20,
-                                    usePointStyle: true
-                                }
-                            },
-                            title: { 
-                                display: true, 
-                                text: 'Top 10 Issues: Sentiment Distribution',
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
-                                }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const label = context.dataset.label || '';
-                                        const value = context.parsed.y;
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                        return `${label}: ${value} (${percentage}%)`;
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                stacked: true,
-                                ticks: {
-                                    maxRotation: 45,
-                                    minRotation: 45
-                                }
-                            },
-                            y: {
-                                stacked: true,
-                                beginAtZero: true
-                            }
-                        },
-                        layout: {
-                            padding: {
-                                top: 10,
-                                bottom: 10
-                            }
-                        }
-                    }
-                });
-                
-                // Update metrics panel with aggregated data
-                updateYouTubeChartMetrics(topIssues);
-                
-            } catch (error) {
-                console.error('Error rendering YouTube issues distribution:', error);
-                document.getElementById('youtubeSentimentChart').parentElement.innerHTML = 
-                    '<div class="flex items-center justify-center h-64 text-red-500">Error loading issues distribution chart</div>';
-            }
-        }
-
-        // Render YouTube charts
-        function renderYouTubeCharts() {
-            try {
-                // Sentiment distribution chart
-                const sentimentCtx = document.getElementById('youtubeSentimentChart').getContext('2d');
-                if (chartInstances.youtubeSentiment) {
-                    chartInstances.youtubeSentiment.destroy();
-                }
-
-                // Use real sentiment data from YouTube analysis
-                const sr = youtubeData.summary?.[0] || {};
-                const posC = Number(sr.pos_comments||0), negC = Number(sr.neg_comments||0), neuC = Number(sr.neu_comments||0);
-                const totalC = posC + negC + neuC;
-                const sentimentData = totalC ? [posC, negC, neuC] : [Number(sr.positive_percentage||0), Number(sr.negative_percentage||0), Number(sr.neutral_percentage||0)];
-                const labels = ['Positive', 'Negative', 'Neutral'];
-
-                // Get total comment count for subtitle
-                const totalComments = totalC || Number(sr.total_comments || 0);
-
-                chartInstances.youtubeSentiment = new Chart(sentimentCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: sentimentData,
-                            backgroundColor: ['#10B981', '#EF4444', '#6B7280'],
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { 
-                                position: 'bottom',
-                                labels: {
-                                    padding: 20,
-                                    usePointStyle: true
-                                }
-                            },
-                            title: { 
-                                display: true, 
-                                text: `Sentiment Analysis (${totalComments} comments)`,
-                                font: {
-                                    size: 14,
-                                    weight: 'bold'
-                                }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const label = context.label || '';
-                                        const value = context.parsed;
-                                        if (totalC > 0) {
-                                            // Using raw counts, show percentage in tooltip
-                                            const percentage = totalC > 0 ? ((value / totalC) * 100).toFixed(1) : 0;
-                                            return `${label}: ${value} comments (${percentage}%)`;
-                                        } else {
-                                            // Fallback to percentage mode
-                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                            return `${label}: ${percentage}%`;
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        layout: {
-                            padding: {
-                                top: 10,
-                                bottom: 10
-                            }
-                        }
-                    }
-                });
-                
-                // Update metrics panel
-                updateYouTubeChartMetrics();
-            } catch (error) {
-                console.error('Error rendering YouTube charts:', error);
-                // Show error message in chart containers
-                document.getElementById('youtubeSentimentChart').parentElement.innerHTML = 
-                    '<div class="flex items-center justify-center h-64 text-red-500">Error loading sentiment chart</div>';
-            }
-        }
-
-        // Render Top 5 Positive Issues Chart
-        function renderTopPositiveIssuesChart() {
-            try {
-                const ctx = document.getElementById('topPositiveIssuesChart');
-                if (!ctx) {
-                    console.error('Canvas element topPositiveIssuesChart not found');
-                    return;
-                }
-
-                // Destroy existing chart instance if it exists
-                if (chartInstances.topPositiveIssues) {
-                    chartInstances.topPositiveIssues.destroy();
-                }
-
-                // Check if we have positive issues data
-                const container = ctx.parentElement;
-                const msg = container.querySelector('.chart-message');
-                if (!youtubeData.positive_issues || youtubeData.positive_issues.length === 0) {
-                    ctx.classList.add('hidden');
-                    msg.textContent = 'No positive issues data available';
-                    msg.classList.remove('hidden');
-                    return;
-                }
-
-                // Sort issues by occurrences in descending order and take top 5
-                const sortedIssues = [...(youtubeData.positive_issues || [])]
-                    .sort((a, b) => Number(b.Occurrences || b.occurrences || 0) - Number(a.Occurrences || a.occurrences || 0))
-                    .slice(0, 5);
-
-                const labels = sortedIssues.map(issue => issue.Issue || issue.issue || 'Unknown Issue');
-                const data = sortedIssues.map(issue => Number(issue.Occurrences || issue.occurrences || 0));
-
-                chartInstances.topPositiveIssues = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Occurrences',
-                            data: data,
-                            backgroundColor: '#10B981',
-                            borderColor: '#059669',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Top 5 Issues with Most Positive Sentiment'
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    title: function(context) {
-                                        return context[0].label;
-                                    },
-                                    label: function(context) {
-                                        const issue = sortedIssues[context.dataIndex];
-                                        const raw = issue.Confidence ?? issue.confidence ?? 0;
-                                        let confNum = typeof raw === 'string' ? parsePercentage(raw) : Number(raw);
-                                        if (!Number.isFinite(confNum)) confNum = 0;
-                                        // Convert 0–1 to percentage
-                                        const confPct = confNum <= 1 ? confNum * 100 : confNum;
-                                        return [
-                                            `Occurrences: ${context.parsed.x.toLocaleString()}`,
-                                            `Confidence: ${confPct.toFixed(1)}%`
-                                        ];
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Occurrences'
-                                }
-                            },
-                            y: {
-                                title: {
-                                    display: true,
-                                    text: 'Political Issues'
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                // On success, show canvas and hide message
-                ctx.classList.remove('hidden');
-                msg?.classList.add('hidden');
-            } catch (error) {
-                console.error('Error rendering top positive issues chart:', error);
-                const ctx = document.getElementById('topPositiveIssuesChart');
-                const container = ctx.parentElement;
-                const msg = container.querySelector('.chart-message');
-                if (ctx) {
-                    ctx.classList.add('hidden');
-                    msg.textContent = 'Error loading positive issues chart';
-                    msg.classList.remove('hidden');
-                }
-            }
-        }
-
-        // Render Top 5 Negative Issues Chart
-        function renderTopNegativeIssuesChart() {
-            try {
-                const ctx = document.getElementById('topNegativeIssuesChart');
-                if (!ctx) {
-                    console.error('Canvas element topNegativeIssuesChart not found');
-                    return;
-                }
-
-                // Destroy existing chart instance if it exists
-                if (chartInstances.topNegativeIssues) {
-                    chartInstances.topNegativeIssues.destroy();
-                }
-
-                // Check if we have negative issues data
-                const container = ctx.parentElement;
-                const msg = container.querySelector('.chart-message');
-                if (!youtubeData.negative_issues || youtubeData.negative_issues.length === 0) {
-                    ctx.classList.add('hidden');
-                    msg.textContent = 'No negative issues data available';
-                    msg.classList.remove('hidden');
-                    return;
-                }
-
-                // Sort issues by occurrences in descending order and take top 5
-                const sortedIssues = [...(youtubeData.negative_issues || [])]
-                    .sort((a, b) => Number(b.Occurrences || b.occurrences || 0) - Number(a.Occurrences || a.occurrences || 0))
-                    .slice(0, 5);
-
-                const labels = sortedIssues.map(issue => issue.Issue || issue.issue || 'Unknown Issue');
-                const data = sortedIssues.map(issue => Number(issue.Occurrences || issue.occurrences || 0));
-
-                chartInstances.topNegativeIssues = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Occurrences',
-                            data: data,
-                            backgroundColor: '#EF4444',
-                            borderColor: '#DC2626',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: 'Top 5 Issues with Most Negative Sentiment'
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    title: function(context) {
-                                        return context[0].label;
-                                    },
-                                    label: function(context) {
-                                        const issue = sortedIssues[context.dataIndex];
-                                        const raw = issue.Confidence ?? issue.confidence ?? 0;
-                                        let confNum = typeof raw === 'string' ? parsePercentage(raw) : Number(raw);
-                                        if (!Number.isFinite(confNum)) confNum = 0;
-                                        // Convert 0–1 to percentage
-                                        const confPct = confNum <= 1 ? confNum * 100 : confNum;
-                                        return [
-                                            `Occurrences: ${context.parsed.x.toLocaleString()}`,
-                                            `Confidence: ${confPct.toFixed(1)}%`
-                                        ];
-                                    }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Occurrences'
-                                }
-                            },
-                            y: {
-                                title: {
-                                    display: true,
-                                    text: 'Political Issues'
-                                }
-                            }
-                        }
-                    }
-                });
-                
-                // On success, show canvas and hide message
-                ctx.classList.remove('hidden');
-                msg?.classList.add('hidden');
-            } catch (error) {
-                console.error('Error rendering top negative issues chart:', error);
-                const ctx = document.getElementById('topNegativeIssuesChart');
-                const container = ctx.parentElement;
-                const msg = container.querySelector('.chart-message');
-                if (ctx) {
-                    ctx.classList.add('hidden');
-                    msg.textContent = 'Error loading negative issues chart';
-                    msg.classList.remove('hidden');
-                }
-            }
-        }
-
-        // Update YouTube chart metrics
-        function updateYouTubeChartMetrics(topIssues = null) {
-            if (topIssues && topIssues.length > 0) {
-                // Calculate totals from aggregated issue data
-                let totalPos = 0, totalNeg = 0, totalNeu = 0;
-                topIssues.forEach(([, data]) => {
-                    totalPos += data.pos;
-                    totalNeg += data.neg;
-                    totalNeu += data.neu;
-                });
-                
-                const total = totalPos + totalNeg + totalNeu;
-                
-                if (total > 0) {
-                    document.getElementById('youtube-chart-total-comments').textContent = total.toLocaleString();
-                    
-                    // Determine dominant sentiment
-                    const sentiments = [
-                        {name: 'Positive', count: totalPos}, 
-                        {name: 'Negative', count: totalNeg}, 
-                        {name: 'Neutral', count: totalNeu}
-                    ];
-                    const dominant = sentiments.reduce((a, b) => a.count > b.count ? a : b);
-                    document.getElementById('youtube-chart-dominant-sentiment').textContent = dominant.name;
-                    
-                    // Calculate confidence (percentage gap between top two sentiments)
-                    const sorted = sentiments.sort((a, b) => b.count - a.count);
-                    const confidence = sorted[0].count > 0 ? (((sorted[0].count - sorted[1].count) / total) * 100).toFixed(1) + '%' : 'N/A';
-                    document.getElementById('youtube-chart-confidence').textContent = confidence;
-                } else {
-                    document.getElementById('youtube-chart-total-comments').textContent = 'N/A';
-                    document.getElementById('youtube-chart-dominant-sentiment').textContent = 'N/A';
-                    document.getElementById('youtube-chart-confidence').textContent = 'N/A';
-                }
-            } else {
-                // Fallback to original logic when no issue data available
-                const sr = youtubeData.summary?.[0] || {};
-                const posC = Number(sr.pos_comments||0);
-                const negC = Number(sr.neg_comments||0);
-                const neuC = Number(sr.neu_comments||0);
-                const totalC = posC + negC + neuC;
-                
-                // Handle fallback when comment counts sum to zero
-                if (totalC === 0) {
-                    // Use total_comments from summaryRow and percentage metrics
-                    const fallbackTotal = Number(sr.total_comments || 0);
-                    const posPercent = Number(sr.positive_percentage || 0);
-                    const negPercent = Number(sr.negative_percentage || 0);
-                    const neuPercent = Number(sr.neutral_percentage || 0);
-                    
-                    document.getElementById('youtube-chart-total-comments').textContent = fallbackTotal.toLocaleString();
-                    
-                    // Determine dominant sentiment from percentages
-                    const sentiments = [
-                        {name: 'Positive', count: posPercent}, 
-                        {name: 'Negative', count: negPercent}, 
-                        {name: 'Neutral', count: neuPercent}
-                    ];
-                    const dominant = sentiments.reduce((a, b) => a.count > b.count ? a : b);
-                    document.getElementById('youtube-chart-dominant-sentiment').textContent = dominant.name;
-                    
-                    // Calculate confidence from percentage differences
-                    const sorted = sentiments.sort((a, b) => b.count - a.count);
-                    const confidence = sorted[0].count > 0 ? (sorted[0].count - sorted[1].count).toFixed(1) + '%' : 'N/A';
-                    document.getElementById('youtube-chart-confidence').textContent = confidence;
-                } else {
-                    // Use original logic when comment counts are available
-                    document.getElementById('youtube-chart-total-comments').textContent = totalC.toLocaleString();
-                    
-                    // Determine dominant sentiment
-                    const sentiments = [{name: 'Positive', count: posC}, {name: 'Negative', count: negC}, {name: 'Neutral', count: neuC}];
-                    const dominant = sentiments.reduce((a, b) => a.count > b.count ? a : b);
-                    document.getElementById('youtube-chart-dominant-sentiment').textContent = dominant.name;
-                    
-                    // Calculate confidence (difference between highest and second highest)
-                    const sorted = sentiments.sort((a, b) => b.count - a.count);
-                    const confidence = totalC > 0 ? (((sorted[0].count - sorted[1].count) / totalC) * 100).toFixed(1) + '%' : 'N/A';
-                    document.getElementById('youtube-chart-confidence').textContent = confidence;
-                }
-            }
-        }
-
-
-        // Render YouTube keywords
-        function renderYouTubeKeywords() {
-            renderPositiveKeywords();
-            renderNegativeKeywords();
-            renderMixedKeywords();
-        }
-
-        // Render YouTube political issues
-        function renderYouTubeIssues() {
-            renderPositiveIssues();
-            renderNegativeIssues();
-            renderMixedIssues();
-            renderYouTubePoliticalIssuesNarrative();
-        }
-
-        // Render positive keywords
-        function renderPositiveKeywords() {
-            console.log('Rendering positive keywords...');
-            console.log('Positive keywords data:', youtubeData.positive_keywords);
-
-            const source = youtubeData.positive_keywords || [];
-            const displayLimit = getDisplayLimit('positive-keywords-limit', source);
-
-            // Use real positive keywords data from YouTube analysis
-            const keywords = source && source.length > 0
-                ? source.slice(0, displayLimit).map(k => ({
-                    keyword: k.keyword || 'Unknown',
-                    positive_count: Number(k['positive count'] || k.positive_count || 0),
-                    total_count: Number(k['total count'] || k.total_count || 0),
-                    positive_pct: k['positive%'] || k.positive_pct || '0%',
-                    negative_pct: k['negative%'] || k.negative_pct || '0%',
-                    neutral_pct: k['neutral%'] || k.neutral_pct || '0%'
-                }))
-                : [];
-
-            console.log('Processed positive keywords:', keywords);
-
-            // Convert to renderTags format
-            const tagItems = keywords.map(kw => ({
-                text: `${kw.keyword} (${kw.total_count})`,
-                tooltip: `Positive: ${kw.positive_pct}, Negative: ${kw.negative_pct}, Neutral: ${kw.neutral_pct}`
-            }));
-
-            renderTags('youtube-positive-keywords', tagItems, {
-                backgroundColor: '#D1FAE5',
-                color: '#065F46'
-            });
-        }
-
-        // Render negative keywords
-        function renderNegativeKeywords() {
-            console.log('Rendering negative keywords...');
-            console.log('Negative keywords data:', youtubeData.negative_keywords);
-
-            const source = youtubeData.negative_keywords || [];
-            const displayLimit = getDisplayLimit('negative-keywords-limit', source);
-
-            // Use real negative keywords data from YouTube analysis
-            const keywords = source && source.length > 0
-                ? source.slice(0, displayLimit).map(k => ({
-                    keyword: k.keyword || 'Unknown',
-                    negative_count: Number(k['negative count'] || k.negative_count || 0),
-                    total_count: Number(k['total count'] || k.total_count || 0),
-                    positive_pct: k['positive%'] || k.positive_pct || '0%',
-                    negative_pct: k['negative%'] || k.negative_pct || '0%',
-                    neutral_pct: k['neutral%'] || k.neutral_pct || '0%'
-                }))
-                : [];
-
-            console.log('Processed negative keywords:', keywords);
-
-            // Convert to renderTags format
-            const tagItems = keywords.map(kw => ({
-                text: `${kw.keyword} (${kw.total_count})`,
-                tooltip: `Positive: ${kw.positive_pct}, Negative: ${kw.negative_pct}, Neutral: ${kw.neutral_pct}`
-            }));
-
-            renderTags('youtube-negative-keywords', tagItems, {
-                backgroundColor: '#FEE2E2',
-                color: '#991B1B'
-            });
-        }
-
-        // Render mixed response keywords
-        function renderMixedKeywords() {
-            console.log('Rendering mixed keywords...');
-            console.log('Mixed keywords data:', youtubeData.mixed_keywords);
-
-            const source = youtubeData.mixed_keywords || [];
-            const displayLimit = getDisplayLimit('mixed-keywords-limit', source);
-
-            // Use real mixed keywords data from YouTube analysis
-            const keywords = source && source.length > 0
-                ? source.slice(0, displayLimit).map(k => ({
-                    keyword: k.keyword || 'Unknown',
-                    positive_count: Number(k['positive count'] || k.positive_count || 0),
-                    negative_count: Number(k['negative count'] || k.negative_count || 0),
-                    neutral_count: Number(k['neutral count'] || k.neutral_count || 0),
-                    total: Number(k['total count'] || k.total_count || 0),
-                    positive_pct: k['positive%'] || k.positive_pct || '0%',
-                    negative_pct: k['negative%'] || k.negative_pct || '0%',
-                    neutral_pct: k['neutral%'] || k.neutral_pct || '0%'
-                }))
-                : [];
-
-            console.log('Processed mixed keywords:', keywords);
-
-            // Convert to renderTags format
-            const tagItems = keywords.map(kw => ({
-                text: `${kw.keyword} (${kw.total})`,
-                tooltip: `Positive: ${kw.positive_pct}, Negative: ${kw.negative_pct}, Neutral: ${kw.neutral_pct}`
-            }));
-
-            renderTags('youtube-mixed-keywords', tagItems, {
-                className: 'mixed-response'
-            });
-        }
-
-        // Render positive political issues
-        function renderPositiveIssues() {
-            console.log('Rendering positive issues...');
-            console.log('Positive issues data:', youtubeData.positive_issues);
-
-            const source = youtubeData.positive_issues || [];
-            const displayLimit = getDisplayLimit('positive-issues-limit', source);
-
-            // Use real positive issues data from YouTube analysis
-            const issues = source && source.length > 0
-                ? source.slice(0, displayLimit).map(i => ({
-                    issue: i.issue || 'Unknown',
-                    category: i.category || 'General',
-                    confidence: Number(i.confidence || 0),
-                    occurrences: Number(i.occurrences || 0)
-                }))
-                : [];
-
-            console.log('Processed positive issues:', issues);
-
-            // Convert to renderTags format
-            const tagItems = issues.map(issue => {
-                const confidence = issue.confidence > 0.7 ? '★' : issue.confidence > 0.4 ? '☆' : '';
-                return {
-                    text: `${issue.issue} (${issue.occurrences}) ${confidence}`,
-                    tooltip: `Category: ${issue.category}, Confidence: ${(issue.confidence * 100).toFixed(1)}%`
-                };
-            });
-
-            renderTags('youtube-positive-issues', tagItems, {
-                backgroundColor: '#D1FAE5',
-                color: '#065F46'
-            });
-        }
-
-        // Render negative political issues
-        function renderNegativeIssues() {
-            console.log('Rendering negative issues...');
-            console.log('Negative issues data:', youtubeData.negative_issues);
-
-            const source = youtubeData.negative_issues || [];
-            const displayLimit = getDisplayLimit('negative-issues-limit', source);
-
-            // Use real negative issues data from YouTube analysis
-            const issues = source && source.length > 0
-                ? source.slice(0, displayLimit).map(i => ({
-                    issue: i.issue || 'Unknown',
-                    category: i.category || 'General',
-                    confidence: Number(i.confidence || 0),
-                    occurrences: Number(i.occurrences || 0)
-                }))
-                : [];
-
-            console.log('Processed negative issues:', issues);
-
-            // Convert to renderTags format
-            const tagItems = issues.map(issue => {
-                const confidence = issue.confidence > 0.7 ? '★' : issue.confidence > 0.4 ? '☆' : '';
-                return {
-                    text: `${issue.issue} (${issue.occurrences}) ${confidence}`,
-                    tooltip: `Category: ${issue.category}, Confidence: ${(issue.confidence * 100).toFixed(1)}%`
-                };
-            });
-
-            renderTags('youtube-negative-issues', tagItems, {
-                backgroundColor: '#FEE2E2',
-                color: '#991B1B'
-            });
-        }
-
-        // Render mixed political issues
-        function renderMixedIssues() {
-            console.log('Rendering mixed issues...');
-            console.log('Mixed issues data:', youtubeData.mixed_issues);
-
-            const source = youtubeData.mixed_issues || [];
-            const displayLimit = getDisplayLimit('mixed-issues-limit', source);
-
-            // Use real mixed issues data from YouTube analysis
-            const issues = source && source.length > 0
-                ? source.slice(0, displayLimit).map(i => ({
-                    issue: i.issue || 'Unknown',
-                    category: i.category || 'General',
-                    confidence: Number(i.confidence || 0),
-                    occurrences: Number(i.occurrences || 0)
-                }))
-                : [];
-
-            console.log('Processed mixed issues:', issues);
-
-            // Convert to renderTags format
-            const tagItems = issues.map(issue => {
-                const confidence = issue.confidence > 0.7 ? '★' : issue.confidence > 0.4 ? '☆' : '';
-                return {
-                    text: `${issue.issue} (${issue.occurrences}) ${confidence}`,
-                    tooltip: `Category: ${issue.category}, Confidence: ${(issue.confidence * 100).toFixed(1)}%`
-                };
-            });
-
-            renderTags('youtube-mixed-issues', tagItems, {
-                className: 'mixed-response'
-            });
-        }
-
-        // Update political issues KPI cards
-        // Removed updatePoliticalIssuesKPIs function - KPI cards were removed
-
-
-        // Render integrated summary
-        function renderIntegratedSummary() {
-            // Only render if we're on the poll analysis tab
-            const pollTab = document.getElementById('polls-tab');
-            if (!pollTab || !pollTab.classList.contains('active')) {
-                return;
-            }
-            
-            const summaryContainer = document.getElementById('integrated-summary');
-            if (!summaryContainer) return;
-            
-            if (pollData.summary && pollData.summary.length > 0) {
-                const narrativeRow = pollData.summary.find(row => row.Metric === "Narrative Summary");
-                const summaryText = narrativeRow ? narrativeRow.Value : "Integrated analysis of poll sentiment and YouTube data for Andhra Pradesh politics.";
-                
-                // Get poll respondents count
-                const totalUsers = Number(pollData.summary.find(r => r.Metric === "Total Users Analyzed")?.Value) || '--';
-                
-                // Get YouTube videos count
-                const youtubeVideos = youtubeData.summary && youtubeData.summary.length > 0 ? Number(youtubeData.summary[0].total_videos) || '--' : '--';
-                
-                summaryContainer.innerHTML = `
-                    <div class="space-y-4">
-                        <p>${summaryText}</p>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                            <div class="text-center p-4 bg-gray-50 rounded-lg">
-                                <div class="text-2xl font-bold text-blue-600">${totalUsers}</div>
-                                <div class="text-sm text-gray-600">Poll Respondents</div>
-                            </div>
-                            <div class="text-center p-4 bg-gray-50 rounded-lg">
-                                <div class="text-2xl font-bold text-purple-600">${youtubeVideos}</div>
-                                <div class="text-sm text-gray-600">YouTube Videos</div>
-                            </div>
-                            <div class="text-center p-4 bg-gray-50 rounded-lg">
-                                <div class="text-2xl font-bold text-green-600">${ragStatus.documentsCount || '--'}</div>
-                                <div class="text-sm text-gray-600">RAG Documents</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            } else {
-                summaryContainer.innerHTML = '<p class="text-center py-4">Loading integrated analysis summary...</p>';
-            }
-        }
-
-        // RAG Query functionality using real API
-        async function submitRAGQuery() {
-            const queryInput = document.getElementById('rag-query-input');
-            const responseContainer = document.getElementById('rag-response');
-            const query = queryInput.value.trim();
-
-            if (!query) {
-                alert('Please enter a question.');
-                return;
-            }
-
-            responseContainer.innerHTML = '<div class="flex justify-center items-center"><div class="loading-spinner"></div><span class="ml-2">Generating AI analysis...</span></div>';
-
-            try {
-                // Call the real RAG API
-                const response = await fetch('/api/query', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ question: query })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
-                responseContainer.innerHTML = `
-                    <div class="space-y-4">
-                        <div class="p-4 bg-white rounded-lg border">
-                            <h4 class="font-semibold text-gray-800 mb-2">AI Analysis:</h4>
-                            <p class="text-gray-700">${data.answer}</p>
-                        </div>
-                        ${data.sources && data.sources.length > 0 ? `
-                        <div class="p-4 bg-gray-50 rounded-lg">
-                            <h4 class="font-semibold text-gray-800 mb-2">Data Sources:</h4>
-                            <ul class="text-sm text-gray-600 space-y-1">
-                                ${data.sources.map(source => `<li>• ${source}</li>`).join('')}
-                            </ul>
-                        </div>
-                        ` : ''}
-                        <div class="text-xs text-gray-500">
-                            Analysis powered by RAG system with ${ragStatus.documentsCount || 0} documents in knowledge base
-                        </div>
-                    </div>
-                `;
-            } catch (error) {
-                console.error('RAG query error:', error);
-                responseContainer.innerHTML = `
-                    <div class="p-4 bg-red-50 rounded-lg border border-red-200">
-                        <h4 class="font-semibold text-red-800 mb-2">Error:</h4>
-                        <p class="text-red-700">${error.message}</p>
-                        <button onclick="submitRAGQuery()" class="mt-2 bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 text-sm">
-                            Retry
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        // Removed generateAIWriteup function - now using real RAG API
-        /*
-        function generateAIWriteup(query) {
-            const queryLower = query.toLowerCase();
-            let analysis = '';
-            let sources = [];
-            let dataPoints = 0;
-
-            // Analyze poll data
-            if (pollData.summary && pollData.summary.length > 0) {
-                const pollSummary = pollData.summary[0];
-                dataPoints += 1;
-                sources.push('Poll Sentiment Analysis Report');
-                
-                if (queryLower.includes('sentiment') || queryLower.includes('voter') || queryLower.includes('poll')) {
-                    const totalResponses = Number(pollSummary.total_responses || 0);
-                    const positivePct = Number(pollSummary.positive_percentage || 0);
-                    const negativePct = Number(pollSummary.negative_percentage || 0);
-                    
-                    analysis += `Based on poll analysis of ${totalResponses} responses, voter sentiment shows ${positivePct}% positive, ${negativePct}% negative, and ${100-positivePct-negativePct}% neutral responses. `;
-                }
-            }
-
-            // Analyze YouTube data
-            if (youtubeData.summary && youtubeData.summary.length > 0) {
-                const youtubeSummary = youtubeData.summary[0];
-                dataPoints += 1;
-                sources.push('YouTube Sentiment Analysis Report');
-                
-                if (queryLower.includes('youtube') || queryLower.includes('social media') || queryLower.includes('online')) {
-                    const totalVideos = Number(youtubeSummary.total_videos || 0);
-                    const totalComments = Number(youtubeSummary.total_comments || 0);
-                    const sentimentScore = Number(youtubeSummary.overall_sentiment_score || 0);
-                    
-                    analysis += `YouTube analysis of ${totalVideos} videos with ${totalComments} comments reveals an overall sentiment score of ${(sentimentScore * 100).toFixed(1)}%. `;
-                }
-            }
-
-            // Analyze keywords and issues
-            if (queryLower.includes('issue') || queryLower.includes('topic') || queryLower.includes('concern')) {
-                const allKeywords = [];
-                const allIssues = [];
-                
-                // Collect positive keywords
-                if (youtubeData.positive_keywords && youtubeData.positive_keywords.length > 0) {
-                    youtubeData.positive_keywords.slice(0, 5).forEach(k => {
-                        allKeywords.push(k.Keyword || k.keyword);
-                    });
-                }
-                
-                // Collect negative keywords
-                if (youtubeData.negative_keywords && youtubeData.negative_keywords.length > 0) {
-                    youtubeData.negative_keywords.slice(0, 5).forEach(k => {
-                        allKeywords.push(k.Keyword || k.keyword);
-                    });
-                }
-                
-                // Collect issues
-                if (youtubeData.positive_issues && youtubeData.positive_issues.length > 0) {
-                    youtubeData.positive_issues.slice(0, 3).forEach(i => {
-                        allIssues.push(i.Issue || i.issue);
-                    });
-                }
-                
-                if (youtubeData.negative_issues && youtubeData.negative_issues.length > 0) {
-                    youtubeData.negative_issues.slice(0, 3).forEach(i => {
-                        allIssues.push(i.Issue || i.issue);
-                    });
-                }
-                
-                if (allKeywords.length > 0 || allIssues.length > 0) {
-                    analysis += `Key topics identified include: ${[...new Set(allKeywords)].slice(0, 8).join(', ')}. `;
-                    if (allIssues.length > 0) {
-                        analysis += `Major political issues discussed: ${[...new Set(allIssues)].slice(0, 5).join(', ')}. `;
-                    }
-                }
-            }
-
-
-            // Generate contextual response based on query
-            if (queryLower.includes('andhra pradesh') || queryLower.includes('ysrcp') || queryLower.includes('government')) {
-                analysis += `The analysis indicates mixed public sentiment towards current political developments in Andhra Pradesh, with infrastructure and development projects receiving positive attention while governance transparency remains a concern.`;
-            } else if (queryLower.includes('polavaram') || queryLower.includes('project') || queryLower.includes('development')) {
-                analysis += `Development projects, particularly infrastructure initiatives, show mixed public response with appreciation for progress but concerns about implementation and transparency.`;
-            } else if (queryLower.includes('welfare') || queryLower.includes('scheme') || queryLower.includes('benefit')) {
-                analysis += `Social welfare schemes demonstrate generally positive sentiment, though there are concerns about implementation efficiency and beneficiary coverage.`;
-            } else {
-                analysis += `The comprehensive sentiment analysis reveals a nuanced public opinion landscape with varying perspectives across different political and social issues.`;
-            }
-
-            // Fallback if no specific analysis was generated
-            if (analysis.trim() === '') {
-                analysis = `Based on the available sentiment analysis data, public opinion shows diverse perspectives across various political and social issues. The data indicates both positive and negative sentiment trends that require careful interpretation in the context of current political developments.`;
-            }
-
-            return {
-                answer: analysis,
-                sources: sources.length > 0 ? sources : ['Sentiment Analysis Reports', 'Excel Data Analysis'],
-                metadata: {
-                    dataPoints: dataPoints,
-                    queryType: queryLower.includes('?') ? 'question' : 'statement',
-                    analysisTimestamp: new Date().toISOString()
-                }
-            };
-        }
-        */
-
-        // Ask sample question
-        function askSampleQuestion(question) {
-            document.getElementById('rag-query-input').value = question;
-            submitRAGQuery();
-        }
-
-        // Update data freshness
-        function updateDataFreshness() {
-            const now = new Date();
-            document.getElementById('data-freshness').textContent = 
-                `Last updated: ${now.toLocaleTimeString()}`;
-        }
-
-        // Refresh data
-        async function refreshData() {
-            const refreshButton = event.target;
-            const originalText = refreshButton.textContent;
-            refreshButton.textContent = 'Refreshing...';
-            refreshButton.disabled = true;
-
-            try {
-                await fetchAllData();
-                updateDataFreshness();
-            } catch (error) {
-                console.error('Error refreshing data:', error);
-                alert('Error refreshing data. Please try again.');
-            } finally {
-                refreshButton.textContent = originalText;
-                refreshButton.disabled = false;
-            }
-        }
-
-        // Export to PDF
-        async function exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            const element = document.getElementById('dashboard-content');
-            
-            const pdf = new jsPDF('p', 'pt', 'a4');
-            const margin = 20;
-
-            const canvas = await html2canvas(element, { 
-                scale: 2, 
-                useCORS: true,
-                logging: false,
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-            const imgProps = pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth() - 2 * margin;
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-            let heightLeft = pdfHeight;
-            let position = 0;
-
-            pdf.addImage(imgData, 'PNG', margin, position, pdfWidth, pdfHeight);
-            heightLeft -= pdf.internal.pageSize.getHeight();
-
-            while (heightLeft > 0) {
-                position = heightLeft - pdfHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', margin, position, pdfWidth, pdfHeight);
-                heightLeft -= pdf.internal.pageSize.getHeight();
-            }
-            
-            pdf.save('integrated_analysis_report.pdf');
-        }
-    </script>
-</body>
-</html>
+                // Load narrative sheets with enhanced diagnostics
+                console.log('Narrative Summary sheet
